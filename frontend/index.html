@@ -391,6 +391,9 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);
 }
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 
+/* KASIR CARD — global flex layout to prevent collapse/messy grid */
+.kasir-card{display:flex!important;flex-direction:column!important;min-height:0!important;}
+
 /* CARD */
 .card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;border:1px solid var(--border);}
 .card-body{padding:24px;}
@@ -2677,7 +2680,7 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
               <button onclick="kasirOpenCariCabang()" style="background:#EFF6FF;color:#2563EB;border:1.5px solid #BFDBFE;border-radius:8px;padding:8px 10px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit">🔍</button>
             </div>
             <div id="kasir-kat-list" style="display:flex;gap:6px;padding:8px 12px;overflow-x:auto;background:#fff;border-bottom:1px solid var(--border)"></div>
-            <div id="kasir-grid" style="flex:1;overflow-y:auto;padding:10px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-content:start">
+            <div id="kasir-grid" style="flex:1;overflow-y:auto;padding:10px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-content:start;grid-auto-rows:min-content">
               <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">Memuat produk…</div>
             </div>
           </div>
@@ -13001,31 +13004,32 @@ function kasirFilterProduk(q) {
     var bg = inKartQty>0 ? '#FFF5F5' : '#fff';
     var hasFoto = !!p.foto_url;
     var c = '';
-    c += '<div data-pid="'+p.id+'" data-paket="'+(p.is_paket?1:0)+'" class="kasir-card" style="background:'+bg+';border:1.5px solid '+brdCol+';border-radius:10px;padding:10px;cursor:'+(p.qty>0?'pointer':'not-allowed')+';opacity:'+(p.qty===0?'.4':'1')+';position:relative;overflow:hidden;box-sizing:border-box">';
+    c += '<div data-pid="'+p.id+'" data-paket="'+(p.is_paket?1:0)+'" class="kasir-card" style="background:'+bg+';border:1.5px solid '+brdCol+';border-radius:10px;padding:10px;cursor:'+(p.qty>0?'pointer':'not-allowed')+';opacity:'+(p.qty===0?'.4':'1')+';position:relative;overflow:hidden;box-sizing:border-box;display:flex;flex-direction:column">';
     if (inKartQty>0) c += '<div style="position:absolute;top:4px;left:4px;min-width:20px;height:20px;background:#C1121F;color:#fff;border-radius:50%;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;z-index:2;padding:0 4px">'+inKartQty+'</div>';
-    // Thumbnail area
+    // Thumbnail area — padding-bottom trick for consistent aspect ratio
     if (hasFoto) {
       var src = p.foto_url.charAt(0)==='/' ? p.foto_url : '/uploads/'+p.foto_url;
-      c += '<div style="width:100%;height:100px;border-radius:8px;overflow:hidden;margin-bottom:6px;background:#F3F4F6"><img src="'+src+'" loading="lazy" style="width:100%;height:100%;object-fit:cover"></div>';
+      c += '<div style="width:100%;padding-bottom:65%;border-radius:8px;overflow:hidden;margin-bottom:6px;background:#F3F4F6;position:relative;flex-shrink:0"><img src="'+src+'" loading="lazy" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover"></div>';
     } else {
       var initial = (p.nama||'?').charAt(0).toUpperCase();
       var colors = ['#EFF6FF','#F0FDF4','#FFF7ED','#FDF2F8','#F5F3FF','#ECFDF5'];
       var bgc = colors[p.id % colors.length];
-      c += '<div style="width:100%;height:100px;border-radius:8px;margin-bottom:6px;background:'+bgc+';display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px">';
+      c += '<div style="width:100%;padding-bottom:65%;border-radius:8px;margin-bottom:6px;background:'+bgc+';position:relative;flex-shrink:0">';
+      c += '<div style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center">';
       c += '<div style="font-size:28px;font-weight:800;color:rgba(0,0,0,.15)">'+initial+'</div>';
-      c += '</div>';
+      c += '</div></div>';
     }
-    // Nama
-    c += '<div style="font-size:11px;font-weight:700;line-height:1.3;height:28px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">'+p.nama+'</div>';
+    // Nama — flex:1 pushes price to bottom
+    c += '<div style="font-size:11px;font-weight:700;line-height:1.3;min-height:28px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;flex:1">'+p.nama+'</div>';
     // Tags
     var t = '';
     if (p.is_paket) t += '<span style="background:#7C3AED;color:#fff;font-size:8px;font-weight:700;border-radius:3px;padding:1px 4px">PAKET</span> ';
     if (p.komisi>0) t += '<span style="background:#EFF6FF;color:#2563EB;font-size:8px;font-weight:700;border-radius:3px;padding:1px 4px">+'+rp(p.komisi)+'</span> ';
     if (p.komisi_poin>0) t += '<span style="background:#F0FDF4;color:#16A34A;font-size:8px;font-weight:700;border-radius:3px;padding:1px 4px">+'+p.komisi_poin+'p</span> ';
     if (!p.is_paket && p.stok_minimum>0 && p.qty>0 && p.qty<=p.stok_minimum) t += '<span style="background:#FEF2F2;color:#DC2626;font-size:8px;font-weight:700;border-radius:3px;padding:1px 4px">TIPIS</span>';
-    if (t) c += '<div style="margin:2px 0;line-height:1.5">'+t+'</div>';
-    // Harga + Stok
-    c += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px">';
+    if (t) c += '<div style="margin:2px 0;line-height:1.5;flex-shrink:0">'+t+'</div>';
+    // Harga + Stok — always at bottom
+    c += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:auto;flex-shrink:0">';
     c += '<b style="font-size:12px;color:#C1121F">'+rp(p.harga_jual)+'</b>';
     c += '<span style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:8px;background:'+stokBg+';color:'+stokCol+'">'+stokLbl+'</span>';
     c += '</div></div>';
