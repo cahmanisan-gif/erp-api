@@ -252,12 +252,28 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);
     min-height:36px!important;white-space:nowrap!important;
   }
 
-  /* Product cards: compact image, bigger text */
+  /* Product cards: bigger text for mobile readability */
   .kasir-card {
     padding:8px!important;border-radius:10px!important;
   }
   .kasir-card img {
     border-radius:8px!important;
+  }
+  /* Nama produk: 11px → 13px */
+  .kasir-card div[style*="webkit-line-clamp"] {
+    font-size:13px!important;min-height:34px!important;
+  }
+  /* Harga: 12px → 14px */
+  .kasir-card b[style*="color:#C1121F"] {
+    font-size:14px!important;
+  }
+  /* Stok badge: 10px → 11px */
+  .kasir-card span[style*="border-radius:8px"] {
+    font-size:11px!important;padding:3px 7px!important;
+  }
+  /* Tags PAKET/komisi/poin/TIPIS: 8px → 10px */
+  .kasir-card span[style*="border-radius:3px"] {
+    font-size:10px!important;padding:2px 6px!important;
   }
 
   /* Cart items: bigger controls */
@@ -12999,7 +13015,7 @@ function kasirFilterProduk(q) {
     var inKartQty = inKart ? inKart.qty : 0;
     var stokBg = p.qty===0?'#FEF2F2':p.qty<=5?'#FFFBEB':'#ECFDF5';
     var stokCol = p.qty===0?'#DC2626':p.qty<=5?'#D97706':'#059669';
-    var stokLbl = p.qty===0?'Habis':p.qty<=5?'Sisa '+p.qty:''+p.qty;
+    var stokLbl = p.qty===0?'Habis':p.qty<=5?'Sisa '+p.qty:'Sisa '+p.qty;
     var brdCol = inKartQty>0 ? '#C1121F' : p.qty===0?'#FECACA':p.qty<=5?'#FDE68A':'#E5E7EB';
     var bg = inKartQty>0 ? '#FFF5F5' : '#fff';
     var hasFoto = !!p.foto_url;
@@ -13025,7 +13041,7 @@ function kasirFilterProduk(q) {
     var t = '';
     if (p.is_paket) t += '<span style="background:#7C3AED;color:#fff;font-size:8px;font-weight:700;border-radius:3px;padding:1px 4px">PAKET</span> ';
     if (p.komisi>0) t += '<span style="background:#EFF6FF;color:#2563EB;font-size:8px;font-weight:700;border-radius:3px;padding:1px 4px">+'+rp(p.komisi)+'</span> ';
-    if (p.komisi_poin>0) t += '<span style="background:#F0FDF4;color:#16A34A;font-size:8px;font-weight:700;border-radius:3px;padding:1px 4px">+'+p.komisi_poin+'p</span> ';
+    if (p.komisi_poin>0) t += '<span style="background:#F0FDF4;color:#16A34A;font-size:8px;font-weight:700;border-radius:3px;padding:1px 4px">+'+p.komisi_poin+' poin</span> ';
     if (!p.is_paket && p.stok_minimum>0 && p.qty>0 && p.qty<=p.stok_minimum) t += '<span style="background:#FEF2F2;color:#DC2626;font-size:8px;font-weight:700;border-radius:3px;padding:1px 4px">TIPIS</span>';
     if (t) c += '<div style="margin:2px 0;line-height:1.5;flex-shrink:0">'+t+'</div>';
     // Harga + Stok — always at bottom
