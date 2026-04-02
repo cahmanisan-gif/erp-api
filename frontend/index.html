@@ -354,9 +354,10 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);
     min-height:52px!important;
   }
 
-  /* POS Setting: single column on mobile */
+  /* POS Setting: single column on mobile — preview di bawah */
   .pss-grid{grid-template-columns:1fr!important;}
-  .pss-preview{display:none!important;} /* hide preview on mobile */
+  .pss-preview{display:block!important;}
+  .pss-preview #struk-preview-box{width:100%!important;max-width:none!important;}
   #pos-setting-tabs{overflow-x:auto!important;flex-wrap:nowrap!important;-webkit-overflow-scrolling:touch!important;}
   #pos-setting-tabs .tab-btn{white-space:nowrap!important;flex-shrink:0!important;padding:8px 14px!important;font-size:12px!important;}
 
@@ -815,11 +816,23 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
   min-width:0!important;
 }
 
-/* App mode: POS Setting responsive */
+/* App mode: POS Setting responsive — preview visible below config */
 .app-mode .pss-grid{grid-template-columns:1fr!important;}
-.app-mode .pss-preview{display:none!important;}
+.app-mode .pss-preview{
+  display:block!important;
+  margin-top:0!important;
+  border-radius:16px!important;
+}
+.app-mode .pss-preview #struk-preview-box{
+  width:100%!important;max-width:none!important;
+  margin:0!important;
+}
+.app-mode .pss-guide{margin-top:0!important;}
 .app-mode #pos-setting-tabs{overflow-x:auto!important;flex-wrap:nowrap!important;}
 .app-mode #pos-setting-tabs .tab-btn{white-space:nowrap!important;flex-shrink:0!important;}
+/* POS Setting: no horizontal scroll */
+.app-mode #pg-pos-setting{overflow-x:hidden!important;}
+.app-mode #pg-pos-setting .pss-grid{overflow-x:hidden!important;}
 
 /* ── Menu Drawer ── */
 #app-menu-drawer{
@@ -3598,18 +3611,19 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
           </div>
           <div class="pss-preview" style="background:#fff;border-radius:16px;border:1px solid var(--border);padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.06)">
             <div style="font-size:15px;font-weight:800;margin-bottom:16px">Preview Struk</div>
-            <div style="display:flex;justify-content:center">
-              <div id="struk-preview-box" style="background:#fff;border:1px dashed #ccc;border-radius:8px;padding:20px;font-family:'Courier New',monospace;font-size:12px;line-height:1.9;width:260px;box-shadow:0 2px 8px rgba(0,0,0,.08)">
-                <div style="text-align:center"><b>Raja Vapor</b></div>
-                <div style="border-top:1px dashed #ccc;margin:8px 0;padding-top:8px;font-size:11px">
-                  <div style="display:flex;justify-content:space-between"><span>Produk A</span><span>Rp 35.000</span></div>
-                  <div style="display:flex;justify-content:space-between"><span>Produk B x2</span><span>Rp 70.000</span></div>
-                </div>
-                <div style="border-top:1px dashed #ccc;margin:8px 0;padding-top:8px">
-                  <div style="display:flex;justify-content:space-between"><b>TOTAL</b><b>Rp 105.000</b></div>
-                </div>
-                <div style="border-top:1px dashed #ccc;margin:8px 0;padding-top:8px;text-align:center;font-size:11px">Terima kasih telah berbelanja!</div>
+            <div id="struk-preview-box" style="background:#fff;border:1px dashed #ccc;border-radius:8px;padding:20px;font-family:'Courier New',monospace;font-size:12px;line-height:1.8;max-width:320px;margin:0 auto;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+              <div style="text-align:center"><b style="font-size:14px">Raja Vapor</b></div>
+              <div style="border-top:1px dashed #bbb;margin:8px 0"></div>
+              <div style="font-size:11px">
+                <div>Produk A</div>
+                <div style="display:flex;justify-content:space-between;padding-left:8px;color:#666"><span>1x Rp 35.000</span><span>Rp 35.000</span></div>
+                <div style="margin-top:4px">Produk B</div>
+                <div style="display:flex;justify-content:space-between;padding-left:8px;color:#666"><span>2x Rp 35.000</span><span>Rp 70.000</span></div>
               </div>
+              <div style="border-top:1px dashed #bbb;margin:8px 0"></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><b>TOTAL</b><b>Rp 105.000</b></div>
+              <div style="border-top:1px dashed #bbb;margin:8px 0"></div>
+              <div style="text-align:center;font-size:11px;color:#888">— Terima kasih! —</div>
             </div>
           </div>
         </div>
@@ -15961,17 +15975,34 @@ function updateStrukPreview() {
   const footer = document.getElementById('setting-struk-footer')?.value || 'Terima kasih!';
   const showLogo = document.getElementById('setting-show-logo')?.checked;
   const logoUrl = MY_STRUK.struk_logo || POS_SETTINGS.struk_logo;
+  const cabNama = USER?.nama_cabang || 'RV001 - Toko Contoh';
+  const now = new Date().toLocaleString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
   document.getElementById('struk-preview-box').innerHTML = `
-    ${showLogo && logoUrl ? `<div style="text-align:center;margin-bottom:4px"><img src="${logoUrl}" style="width:40px;height:40px;object-fit:contain"></div>` : ''}
-    <div style="text-align:center"><b>${header}</b></div>
-    <div style="border-top:1px dashed #ccc;margin:6px 0;padding-top:6px">
-      <div>Produk A &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Rp 35.000</div>
-      <div>Produk B x2 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Rp 70.000</div>
+    ${showLogo && logoUrl ? `<div style="text-align:center;margin-bottom:6px"><img src="${logoUrl}" style="width:44px;height:44px;object-fit:contain;border-radius:4px"></div>` : ''}
+    <div style="text-align:center"><b style="font-size:14px">${header}</b></div>
+    <div style="text-align:center;font-size:10px;color:#888">${cabNama}</div>
+    <div style="border-top:1px dashed #bbb;margin:8px 0"></div>
+    <div style="font-size:10px;color:#888">${now}</div>
+    <div style="font-size:10px;color:#888">Kasir: ${USER?.nama_lengkap||'Kasir'}</div>
+    <div style="font-size:10px;color:#888">No: TRX-PREVIEW</div>
+    <div style="border-top:1px dashed #bbb;margin:8px 0"></div>
+    <div style="font-size:11px">
+      <div>SMOK Nord 5 Kit</div>
+      <div style="display:flex;justify-content:space-between;padding-left:8px;color:#666"><span>1x Rp 350.000</span><span>Rp 350.000</span></div>
+      <div style="margin-top:4px">Foom Ice Tea 30ml</div>
+      <div style="display:flex;justify-content:space-between;padding-left:8px;color:#666"><span>2x Rp 35.000</span><span>Rp 70.000</span></div>
+      <div style="margin-top:4px">Coil Replacement 0.6ohm</div>
+      <div style="display:flex;justify-content:space-between;padding-left:8px;color:#666"><span>1x Rp 25.000</span><span>Rp 25.000</span></div>
     </div>
-    <div style="border-top:1px dashed #ccc;margin:6px 0;padding-top:6px">
-      <div style="display:flex;justify-content:space-between"><b>TOTAL</b><b>Rp 105.000</b></div>
-    </div>
-    <div style="border-top:1px dashed #ccc;margin:6px 0;padding-top:6px;text-align:center">${footer}</div>`;
+    <div style="border-top:1px dashed #bbb;margin:8px 0"></div>
+    <div style="display:flex;justify-content:space-between;font-size:11px"><span>Subtotal</span><span>Rp 445.000</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:#059669"><span>Diskon</span><span>-Rp 5.000</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:4px"><b>TOTAL</b><b>Rp 440.000</b></div>
+    <div style="border-top:1px dashed #bbb;margin:8px 0"></div>
+    <div style="display:flex;justify-content:space-between;font-size:11px"><span>Bayar (CASH)</span><span>Rp 500.000</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:11px"><b>Kembalian</b><b>Rp 60.000</b></div>
+    <div style="border-top:1px dashed #bbb;margin:8px 0"></div>
+    <div style="text-align:center;font-size:11px;color:#888">${footer ? '— '+footer+' —' : ''}</div>`;
 }
 
 // Attach live preview
