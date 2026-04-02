@@ -7534,13 +7534,26 @@ function appRenderBottomNav() {
   var nav = document.getElementById('app-bottom-nav');
   if (!nav) return;
   var menus = _myFooterMenus;
-  // Fallback ke default jika belum ada config
+  // Fallback ke default berdasarkan role
   if (!menus || !menus.length) {
-    menus = [
-      {menu_key:'pg-dashboard',label:'Home',icon:'home'},
-      {menu_key:'pg-kasir',label:'Kasir',icon:'monitor'},
-      {menu_key:'app-menu',label:'Menu',icon:'grid'},
-    ];
+    var role = (window.USER && USER.role) || '';
+    if (['kasir','kasir_sales'].includes(role)) {
+      menus = [
+        {menu_key:'pg-dashboard',label:'Home',icon:'home'},
+        {menu_key:'pg-kasir',label:'Kasir',icon:'monitor'},
+        {menu_key:'app-menu',label:'Menu',icon:'grid'},
+      ];
+    } else {
+      menus = [
+        {menu_key:'pg-dashboard',label:'Home',icon:'home'},
+        {menu_key:'pg-kasir',label:'Kasir',icon:'monitor'},
+        {menu_key:'app-menu',label:'Menu',icon:'grid'},
+      ];
+    }
+  }
+  // Pastikan pg-dashboard selalu ada di bottom nav untuk semua role
+  if (!menus.some(function(m){ return m.menu_key === 'pg-dashboard'; })) {
+    menus.unshift({menu_key:'pg-dashboard',label:'Home',icon:'home'});
   }
   // Hapus notif & akun dari bottom nav — sudah ada di top header bar
   menus = menus.filter(function(m){ return m.menu_key !== 'app-notif' && m.menu_key !== 'app-akun'; });
