@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Test Kasir Card</title></head>
+<body style="padding:20px;background:#f5f5f5">
+<h3>Test Kasir Card Rendering</h3>
+<div id="grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;max-width:400px">
+</div>
+<script>
+var html = '';
+for (var i = 0; i < 6; i++) {
+  html += '<div style="background:#fff;border:1.5px solid #E5E7EB;border-radius:10px;padding:8px;overflow:hidden;box-sizing:border-box;box-shadow:0 1px 3px rgba(0,0,0,.06)">';
+  html += '<div style="width:100%;height:100px;border-radius:8px;overflow:hidden;margin-bottom:6px;background:#F3F4F6;display:flex;align-items:center;justify-content:center">';
+  html += '<img src="/assets/logo.jpg" style="width:100%;height:100%;object-fit:contain;padding:20%;filter:grayscale(1);opacity:.5">';
+  html += '</div>';
+  html += '<div style="font-size:11px;font-weight:700;height:28px;overflow:hidden">Test Produk ' + (i+1) + '</div>';
+  html += '<div style="display:flex;justify-content:space-between">';
+  html += '<div style="font-size:12px;font-weight:800;color:#C1121F">Rp 85.000</div>';
+  html += '<div style="font-size:10px;padding:2px 6px;border-radius:8px;background:#ECFDF5;color:#059669">12</div>';
+  html += '</div></div>';
+}
+document.getElementById('grid').innerHTML = html;
+</script>
+</body></html>
