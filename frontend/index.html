@@ -13541,15 +13541,20 @@ let KASIR_DISKON_TIPE  = 'persen';
 
 async function kasirLoadSettings() {
   try {
-    // Ambil setting global (struk, dll)
+    // Ambil setting global (struk, dll) → simpan ke global POS_SETTINGS
     const resS = await api('/pos-settings');
     const s = resS.data || {};
+    POS_SETTINGS = s;
 
     // Ambil setting struk pribadi (fallback ke global)
     const resStruk = await api('/pos-settings/struk/my');
     if (resStruk.success) {
       MY_STRUK = resStruk.data || {};
       MY_STRUK_IS_PERSONAL = MY_STRUK.is_personal === true;
+      // Jika personal user belum upload logo, fallback ke logo global
+      if (!MY_STRUK.struk_logo && POS_SETTINGS.struk_logo) {
+        MY_STRUK.struk_logo = POS_SETTINGS.struk_logo;
+      }
     }
 
     // Ambil permission PERSONAL user ini
@@ -16024,6 +16029,10 @@ async function initPosSetting() {
   if (resStruk.success) {
     MY_STRUK = resStruk.data || {};
     MY_STRUK_IS_PERSONAL = MY_STRUK.is_personal === true;
+    // Fallback logo: jika personal belum upload, pakai global
+    if (!MY_STRUK.struk_logo && POS_SETTINGS.struk_logo) {
+      MY_STRUK.struk_logo = POS_SETTINGS.struk_logo;
+    }
   }
 
   // Isi form struk dari data per-user
