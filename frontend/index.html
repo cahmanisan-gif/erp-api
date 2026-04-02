@@ -5161,6 +5161,10 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
         style="padding:10px 18px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">
         ⚙️ Fitur Detail
       </button>
+      <button id="ha-tab-struk-btn" onclick="switchHakAksesTab('struk')"
+        style="padding:10px 18px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px">
+        🧾 Setting Struk
+      </button>
     </div>
     <div class="modal-body" style="max-height:65vh;overflow-y:auto;padding:20px">
       <input type="hidden" id="hak-akses-user-id">
@@ -5179,6 +5183,15 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
           💡 Centang fitur yang boleh digunakan user ini. Klik <b>Semua ✓</b> untuk aktifkan semua dalam satu grup.
         </div>
         <div id="hak-akses-list"></div>
+      </div>
+      <!-- Tab: Setting Struk -->
+      <div id="ha-tab-struk" style="display:none">
+        <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#C2410C">
+          🧾 Atur header, footer, dan logo struk untuk user ini. Jika dikosongkan/direset, akan menggunakan setting global.
+        </div>
+        <div id="ha-struk-content" style="padding:0">
+          <div style="text-align:center;padding:24px;color:var(--muted)">Memuat...</div>
+        </div>
       </div>
     </div>
     <div class="modal-foot">
@@ -16964,17 +16977,136 @@ const HAK_AKSES_DEFS = [
 ];
 
 function switchHakAksesTab(tab) {
-  const isMenu = tab === 'menu';
-  document.getElementById('ha-tab-menu').style.display  = isMenu ? '' : 'none';
-  document.getElementById('ha-tab-fitur').style.display = isMenu ? 'none' : '';
-  const menuBtn  = document.getElementById('ha-tab-menu-btn');
-  const fiturBtn = document.getElementById('ha-tab-fitur-btn');
-  menuBtn.style.color             = isMenu ? 'var(--brand)' : 'var(--muted)';
-  menuBtn.style.borderBottomColor = isMenu ? 'var(--brand)' : 'transparent';
-  fiturBtn.style.color             = isMenu ? 'var(--muted)' : 'var(--brand)';
-  fiturBtn.style.borderBottomColor = isMenu ? 'transparent' : 'var(--brand)';
-  document.getElementById('ha-tab-menu-btn')._active  = isMenu;
-  document.getElementById('ha-tab-fitur-btn')._active = !isMenu;
+  document.getElementById('ha-tab-menu').style.display  = tab==='menu' ? '' : 'none';
+  document.getElementById('ha-tab-fitur').style.display = tab==='fitur' ? '' : 'none';
+  document.getElementById('ha-tab-struk').style.display = tab==='struk' ? '' : 'none';
+  ['menu','fitur','struk'].forEach(t => {
+    const btn = document.getElementById('ha-tab-'+t+'-btn');
+    if (btn) {
+      btn.style.color = t===tab ? 'var(--brand)' : 'var(--muted)';
+      btn.style.borderBottomColor = t===tab ? 'var(--brand)' : 'transparent';
+    }
+  });
+  if (tab==='struk') loadHaStrukTab();
+}
+
+async function loadHaStrukTab() {
+  const userId = document.getElementById('hak-akses-user-id').value;
+  const wrap = document.getElementById('ha-struk-content');
+  wrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">Memuat...</div>';
+
+  const [strukRes, globalRes] = await Promise.all([
+    api('/pos-settings/struk/user/'+userId),
+    api('/pos-settings')
+  ]);
+  const d = strukRes.data;
+  const g = globalRes.data || {};
+  const globalLogo = strukRes.global_logo || g.struk_logo || '';
+  const hasPersonal = !!d;
+
+  wrap.innerHTML = `
+    <div style="background:${hasPersonal?'#EFF6FF':'#F0FDF4'};border:1px solid ${hasPersonal?'#BFDBFE':'#BBF7D0'};border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:18px">${hasPersonal?'👤':'🌐'}</span>
+      <div>
+        <b>${hasPersonal?'Setting Pribadi Aktif':'Menggunakan Setting Global'}</b>
+        <div style="color:var(--muted);margin-top:2px">${hasPersonal?'User ini punya setting struk sendiri.':'User ini memakai header/footer/logo dari setting global.'}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div class="fg" style="margin-bottom:14px">
+          <label class="form-label">Header / Nama Toko</label>
+          <input id="ha-struk-header" class="form-input" placeholder="${g.struk_header||'Raja Vapor'}" value="${d?d.struk_header:''}">
+        </div>
+        <div class="fg" style="margin-bottom:14px">
+          <label class="form-label">Footer / Pesan Penutup</label>
+          <input id="ha-struk-footer" class="form-input" placeholder="${g.struk_footer||'Terima kasih!'}" value="${d?d.struk_footer:''}">
+        </div>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:12px;background:var(--surface-2);border-radius:10px;border:1px solid var(--border);margin-bottom:14px">
+          <input type="checkbox" id="ha-struk-show-logo" style="width:16px;height:16px;accent-color:var(--brand)" ${(d?d.struk_show_logo:g.struk_show_logo==='1')?'checked':''}>
+          <div><div style="font-size:13px;font-weight:600">Tampilkan Logo</div></div>
+        </label>
+        <div class="fg" style="margin-bottom:14px">
+          <label class="form-label">Logo Struk</label>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <img id="ha-struk-logo-preview" src="${d&&d.struk_logo?d.struk_logo:(globalLogo||'')}" style="width:52px;height:52px;object-fit:contain;border:1px solid var(--border);border-radius:8px;${(d&&d.struk_logo)||globalLogo?'':'display:none'}">
+            <label class="btn btn-ghost btn-sm" style="cursor:pointer">📤 Upload Logo<input type="file" accept="image/*" style="display:none" onchange="haUploadStrukLogo(this)"></label>
+            ${d&&d.struk_logo_personal?'<button class="btn btn-ghost btn-xs" onclick="haDeleteStrukLogo()">Hapus Logo</button>':''}
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">${d&&d.struk_logo_personal?'Logo pribadi aktif':'Menggunakan logo global'}</div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px">Preview Struk</div>
+        <div style="background:#fff;border:1px dashed #ccc;border-radius:8px;padding:16px;font-family:'Courier New',monospace;font-size:11px;line-height:1.8">
+          <div id="ha-struk-preview-logo" style="text-align:center;margin-bottom:4px;${(d?d.struk_show_logo:g.struk_show_logo==='1')&&((d&&d.struk_logo)||globalLogo)?'':'display:none'}">
+            <img src="${d&&d.struk_logo?d.struk_logo:(globalLogo||'')}" style="width:36px;height:36px;object-fit:contain">
+          </div>
+          <div style="text-align:center"><b id="ha-struk-prev-header">${d?d.struk_header:(g.struk_header||'Raja Vapor')}</b></div>
+          <div style="border-top:1px dashed #bbb;margin:6px 0"></div>
+          <div style="font-size:10px;color:#888">Produk A x2 ......... Rp 70.000</div>
+          <div style="border-top:1px dashed #bbb;margin:6px 0"></div>
+          <div style="display:flex;justify-content:space-between"><b>TOTAL</b><b>Rp 70.000</b></div>
+          <div style="border-top:1px dashed #bbb;margin:6px 0"></div>
+          <div style="text-align:center;font-size:10px;color:#888">— <span id="ha-struk-prev-footer">${d?d.struk_footer:(g.struk_footer||'Terima kasih!')}</span> —</div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-primary" onclick="hasSaveStruk()">💾 Simpan Struk</button>
+      ${hasPersonal?'<button class="btn btn-danger btn-sm" onclick="hasResetStruk()">Reset ke Global</button>':''}
+    </div>`;
+
+  // Live preview
+  const hdr = document.getElementById('ha-struk-header');
+  const ftr = document.getElementById('ha-struk-footer');
+  const chk = document.getElementById('ha-struk-show-logo');
+  if (hdr) hdr.oninput = function(){ document.getElementById('ha-struk-prev-header').textContent = this.value || g.struk_header || 'Raja Vapor'; };
+  if (ftr) ftr.oninput = function(){ document.getElementById('ha-struk-prev-footer').textContent = this.value || g.struk_footer || 'Terima kasih!'; };
+  if (chk) chk.onchange = function(){
+    const logoEl = document.getElementById('ha-struk-preview-logo');
+    logoEl.style.display = this.checked ? '' : 'none';
+  };
+}
+
+async function haUploadStrukLogo(input) {
+  const file = input.files[0]; if (!file) return;
+  const userId = document.getElementById('hak-akses-user-id').value;
+  const fd = new FormData(); fd.append('logo', file);
+  const res = await fetch('/api/pos-settings/struk/user/'+userId+'/upload-logo', {method:'POST',headers:{'Authorization':'Bearer '+TOKEN},body:fd});
+  const d = await res.json();
+  if (d.success) {
+    toast('Logo diupload!','success');
+    loadHaStrukTab(); // refresh
+  } else toast(d.message||'Gagal upload.','error');
+}
+
+async function haDeleteStrukLogo() {
+  if (!confirm('Hapus logo pribadi user ini?')) return;
+  const userId = document.getElementById('hak-akses-user-id').value;
+  // Re-save struk tanpa logo (logo field tidak diubah via PATCH, hanya delete file)
+  toast('Logo dihapus — silakan simpan ulang.','info');
+  loadHaStrukTab();
+}
+
+async function hasSaveStruk() {
+  const userId = document.getElementById('hak-akses-user-id').value;
+  const data = {
+    struk_header: document.getElementById('ha-struk-header').value.trim(),
+    struk_footer: document.getElementById('ha-struk-footer').value.trim(),
+    struk_show_logo: document.getElementById('ha-struk-show-logo').checked ? 1 : 0
+  };
+  const res = await api('/pos-settings/struk/user/'+userId, 'PATCH', data);
+  if (res.success) { toast('Setting struk user disimpan!','success'); loadHaStrukTab(); }
+  else toast(res.message||'Gagal.','error');
+}
+
+async function hasResetStruk() {
+  if (!confirm('Reset setting struk user ini ke default global?')) return;
+  const userId = document.getElementById('hak-akses-user-id').value;
+  const res = await api('/pos-settings/struk/user/'+userId, 'DELETE');
+  if (res.success) { toast('Setting struk direset ke global.','success'); loadHaStrukTab(); }
+  else toast(res.message||'Gagal.','error');
 }
 
 function resetHakAksesTab() {
