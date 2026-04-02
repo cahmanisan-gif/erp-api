@@ -179,8 +179,31 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);
 .content.active{display:block;animation:fadeIn .2s ease;}
 @media(max-width:768px){
   .hide-mobile{display:none!important}
-  #kasir-body{display:block!important;position:relative!important;min-height:0!important;overflow:hidden!important;}
-  #kasir-panel-produk{position:absolute!important;top:0!important;left:0!important;right:0!important;bottom:0!important;overflow:hidden!important;}
+  /* ── Mobile POS: panel produk & kart = absolute fullscreen, toggled via JS ── */
+  #kasir-body{
+    display:block!important;position:relative!important;
+    min-height:0!important;overflow:hidden!important;
+    flex:1!important;
+  }
+  #kasir-panel-produk{
+    position:absolute!important;top:0!important;left:0!important;right:0!important;bottom:0!important;
+    overflow:hidden!important;
+    display:flex!important;flex-direction:column!important;
+  }
+  #kasir-panel-kart{
+    position:absolute!important;top:0!important;left:0!important;right:0!important;bottom:0!important;
+    display:none;/* toggled by JS */
+    flex-direction:column!important;
+    overflow:hidden!important;border-left:none!important;
+    z-index:10!important;
+  }
+  #kasir-kart-scroll{
+    flex:1!important;min-height:0!important;
+    overflow-y:scroll!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-y:contain!important;
+    touch-action:pan-y!important;
+  }
   #kasir-grid{
     position:absolute!important;left:0!important;right:0!important;bottom:0!important;
     grid-template-columns:repeat(2,1fr)!important;gap:8px!important;padding:8px!important;
@@ -196,18 +219,6 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);
     overflow:hidden!important;
     box-sizing:border-box!important;
     min-width:0!important;
-  }
-  #kasir-panel-produk{min-height:0!important;}
-  #kasir-panel-kart{
-    overflow:hidden!important;
-    min-height:0!important;
-  }
-  #kasir-kart-scroll{
-    flex:1!important;overflow-y:scroll!important;
-    -webkit-overflow-scrolling:touch!important;
-    overscroll-behavior-y:contain!important;
-    touch-action:pan-y!important;
-    min-height:0!important;
   }
   #pg-kasir{
     height:100vh!important;height:100dvh!important;
@@ -419,6 +430,10 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);
   }
 }
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* KASIR PANELS — desktop: grid child auto-displayed, flex column for scroll */
+#kasir-panel-kart{display:flex;flex-direction:column;overflow:hidden;}
+#kasir-kart-scroll{flex:1;overflow-y:auto;min-height:0;}
 
 /* KASIR CARD — global flex layout + min-height to prevent collapse in WebView */
 .kasir-card{display:flex!important;flex-direction:column!important;min-height:160px!important;}
@@ -753,6 +768,7 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
   z-index:250!important;
   display:block!important;
 }
+/* ── App-mode POS: same absolute panel approach ── */
 .app-mode #kasir-wrap{height:100%!important;}
 .app-mode #kasir-body{
   flex:1!important;overflow:hidden!important;
@@ -763,6 +779,21 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
 .app-mode #kasir-panel-produk{
   position:absolute!important;top:0!important;left:0!important;right:0!important;bottom:0!important;
   overflow:hidden!important;
+  display:flex!important;flex-direction:column!important;
+}
+.app-mode #kasir-panel-kart{
+  position:absolute!important;top:0!important;left:0!important;right:0!important;bottom:0!important;
+  display:none;/* toggled by JS */
+  flex-direction:column!important;
+  overflow:hidden!important;border-left:none!important;
+  z-index:10!important;
+}
+.app-mode #kasir-kart-scroll{
+  flex:1!important;min-height:0!important;
+  overflow-y:scroll!important;
+  -webkit-overflow-scrolling:touch!important;
+  overscroll-behavior-y:contain!important;
+  touch-action:pan-y!important;
 }
 .app-mode #kasir-grid{
   position:absolute!important;left:0!important;right:0!important;bottom:0!important;
@@ -781,18 +812,7 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
   min-height:160px!important;
   overflow:hidden!important;
   box-sizing:border-box!important;
-  min-width:0!important; /* prevent grid blowout */
-}
-.app-mode #kasir-panel-kart{
-  overflow:hidden!important;
-  min-height:0!important;
-}
-.app-mode #kasir-kart-scroll{
-  flex:1!important;overflow-y:scroll!important;
-  -webkit-overflow-scrolling:touch!important;
-  overscroll-behavior-y:contain!important;
-  touch-action:pan-y!important;
-  min-height:0!important;
+  min-width:0!important;
 }
 
 /* App mode: POS Setting responsive */
@@ -2846,7 +2866,7 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
           </div>
 
           <!-- PANEL KERANJANG -->
-          <div id="kasir-panel-kart" style="background:#fff;border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden">
+          <div id="kasir-panel-kart" style="background:#fff;border-left:1px solid var(--border);flex-direction:column;overflow:hidden">
             <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
               <div style="font-size:14px;font-weight:800">🛒 Keranjang <span id="kasir-kart-count" style="background:var(--brand);color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:2px 7px;display:none">0</span></div>
               <div style="display:flex;gap:6px">
@@ -13215,33 +13235,13 @@ function kasirInitMobile() {
   const kasirPanelKart = document.getElementById('kasir-panel-kart');
 
   document.getElementById('kasir-kart-toggle').style.display = 'flex';
-  kasirPanelKart.style.display = 'none';
   document.getElementById('kasir-kart-back-btn').style.display = 'block';
 
-  // ═══ MOBILE LAYOUT: absolute positioning for WebView compatibility ═══
-  kasirBody.style.display = 'block';
-  kasirBody.style.overflow = 'hidden';
-  kasirBody.style.position = 'relative';
-
-  // Panel produk: fill kasir-body completely
-  kasirPanelProduk.style.position = 'absolute';
-  kasirPanelProduk.style.top = '0';
-  kasirPanelProduk.style.left = '0';
-  kasirPanelProduk.style.right = '0';
-  kasirPanelProduk.style.bottom = '0';
-  kasirPanelProduk.style.overflow = 'hidden';
-
-  // Grid: 2 kolom, absolute positioned below search+kategori
-  kasirGrid.style.gridTemplateColumns = 'repeat(2,1fr)';
-  kasirGrid.style.gridAutoRows = 'min-content';
-  kasirGrid.style.alignContent = 'start';
-  kasirGrid.style.overflowY = 'scroll';
-  kasirGrid.style.webkitOverflowScrolling = 'touch';
-  kasirGrid.style.overscrollBehaviorY = 'contain';
-
-  kasirPanelKart.style.minHeight = '0';
-  kasirPanelKart.style.webkitOverflowScrolling = 'touch';
-  kasirPanelKart.style.overscrollBehaviorY = 'contain';
+  // ═══ MOBILE LAYOUT ═══
+  // Panel kart: hidden by default, fullscreen absolute (CSS handles position)
+  kasirPanelKart.style.display = 'none';
+  kasirPanelProduk.style.display = 'flex';
+  KASIR_MOBILE_KART_OPEN = false;
 
   // Footer hidden until items added
   const footer = document.getElementById('kasir-footer-mobile');
@@ -13287,8 +13287,18 @@ let KASIR_MOBILE_KART_OPEN = false;
 function kasirToggleMobileKart() {
   if (!IS_MOBILE) return;
   KASIR_MOBILE_KART_OPEN = !KASIR_MOBILE_KART_OPEN;
-  document.getElementById('kasir-panel-produk').style.display = KASIR_MOBILE_KART_OPEN ? 'none' : 'flex';
-  document.getElementById('kasir-panel-kart').style.display  = KASIR_MOBILE_KART_OPEN ? 'flex' : 'none';
+  const panelProduk = document.getElementById('kasir-panel-produk');
+  const panelKart   = document.getElementById('kasir-panel-kart');
+  if (KASIR_MOBILE_KART_OPEN) {
+    panelProduk.style.display = 'none';
+    panelKart.style.display   = 'flex';
+    // Scroll ke atas saat buka keranjang
+    const scr = document.getElementById('kasir-kart-scroll');
+    if (scr) scr.scrollTop = 0;
+  } else {
+    panelProduk.style.display = 'flex';
+    panelKart.style.display   = 'none';
+  }
   kasirUpdateFooter();
   if (!KASIR_MOBILE_KART_OPEN) requestAnimationFrame(function(){ kasirRecalcGridHeight(); });
 }
@@ -14812,11 +14822,13 @@ function kasirFooterBayar() {
   document.getElementById('kasir-panel-produk').style.display = 'none';
   document.getElementById('kasir-panel-kart').style.display   = 'flex';
   document.getElementById('kasir-footer-mobile').style.display = 'none';
-  setTimeout(()=>{
-    const scr = document.getElementById('kasir-kart-scroll');
-    const btn = document.getElementById('kasir-btn-bayar');
-    if (scr && btn) scr.scrollTop = scr.scrollHeight;
-  }, 120);
+  // Scroll ke tombol bayar setelah layout settle
+  requestAnimationFrame(()=>{
+    setTimeout(()=>{
+      const scr = document.getElementById('kasir-kart-scroll');
+      if (scr) scr.scrollTop = scr.scrollHeight;
+    }, 50);
+  });
 }
 
 // ── POIN SAYA END ──────────────────────────────
