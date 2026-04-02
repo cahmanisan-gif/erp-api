@@ -263,17 +263,17 @@ router.post('/upload', auth(), upload.single('video'), async (req, res) => {
         message:'Video ditolak: tidak ada audio dan tidak ada pergerakan terdeteksi. Kemungkinan foto/gambar dijadikan video.'});
     }
 
-    // D. Batas upload per user 7 hari terakhir (maks 7 upload, 1/hari)
-    const [weekCheck] = await db.query(
+    // D. Batas upload: 1 video per hari (cek tanggal hari ini)
+    const [todayCheck] = await db.query(
       `SELECT COUNT(*) as c FROM konten_upload
        WHERE personnel_id=? AND status != 'rejected'
-         AND tanggal >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)`,
+         AND tanggal = CURDATE()`,
       [personnel_id]
     );
-    if ((weekCheck[0]?.c || 0) >= 7) {
+    if ((todayCheck[0]?.c || 0) >= 1) {
       fs.unlinkSync(file.path);
       return res.status(400).json({success:false,
-        message:'Upload ditolak: sudah mencapai batas 7 upload dalam 7 hari terakhir.'});
+        message:'Upload ditolak: kamu sudah upload konten hari ini. Coba lagi besok.'});
     }
 
     // 4. FIX #1 + #3: Ekstrak perceptual hash dari 3 frame (25%, 50%, 75%)
@@ -343,12 +343,12 @@ router.post('/upload', auth(), upload.single('video'), async (req, res) => {
     // Simpan semua frame hash di video_meta untuk referensi
     if (frameHashes.length > 0) videoMeta.frame_hashes = frameHashes;
 
-    // Cek sudah upload hari ini
-    const [todayCheck] = await db.query(
+    // Cek sudah upload untuk tanggal yang dipilih (bisa beda dari hari ini)
+    const [tglCheck] = await db.query(
       'SELECT id FROM konten_upload WHERE personnel_id=? AND tanggal=? AND status != "rejected"',
       [personnel_id, tanggal]
     );
-    if (todayCheck.length) {
+    if (tglCheck.length) {
       fs.unlinkSync(file.path);
       return res.status(400).json({success:false, message:'Sudah ada konten yang diupload untuk tanggal ini.'});
     }

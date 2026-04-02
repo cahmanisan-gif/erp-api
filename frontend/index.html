@@ -45,6 +45,15 @@ body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);
 @keyframes tIn{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
 @keyframes tOut{from{transform:translateX(0);opacity:1}to{transform:translateX(110%);opacity:0}}
 
+/* ═══ UNIFIED SVG ICON SYSTEM — iOS / One UI 8 ═══ */
+.rv-ico{display:inline-flex;align-items:center;justify-content:center;width:1.15em;height:1.15em;vertical-align:-.15em;flex-shrink:0;line-height:1;}
+.rv-ico svg{width:100%;height:100%;display:block;}
+.rv-ico-lg{width:1.4em;height:1.4em;}
+.rv-ico-xl{width:2.2em;height:2.2em;}
+h2 .rv-ico,h3 .rv-ico{width:1.05em;height:1.05em;vertical-align:-.1em;}
+.tab-btn .rv-ico{width:1em;height:1em;vertical-align:-.1em;}
+.btn .rv-ico{width:1em;height:1em;vertical-align:-.12em;}
+
 /* LOGIN */
 #login-page{position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;background:#212529;}
 .login-wrap{width:420px;max-width:92vw;}
@@ -1493,7 +1502,7 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
       <!-- Bell Notifikasi -->
       <div style="margin-top:10px;padding:0 12px">
         <button id="notif-bell" onclick="toggleNotifPanel()" style="width:100%;display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:rgba(255,255,255,.7);font-size:12px;cursor:pointer;font-family:inherit;position:relative">
-          <span style="font-size:16px">🔔</span>
+          <span style="font-size:16px;display:inline-flex;align-items:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></span>
           <span>Notifikasi</span>
           <span id="notif-badge" style="display:none;position:absolute;right:8px;background:#DC2626;color:#fff;font-size:9px;font-weight:800;border-radius:99px;min-width:18px;height:18px;line-height:18px;text-align:center;padding:0 4px">0</span>
         </button>
@@ -1519,7 +1528,7 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
     </div>
     <div class="app-top-actions">
       <button class="app-top-btn" onclick="toggleNotifPanel()" title="Notifikasi">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
         <span class="app-top-badge" id="app-top-notif-badge">0</span>
       </button>
       <button class="app-top-btn" onclick="appOpenAkun()" title="Akun">
@@ -1678,15 +1687,15 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
     <!-- CABANG -->
     <div id="pg-cabang" class="content">
       <div class="page-head">
-        <div class="page-head-left"><h2>🏬 Data Cabang</h2><p>Kelola toko Raja Vapor berdasarkan area</p></div>
+        <div class="page-head-left"><h2><span class="rv-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="12" width="7" height="7" rx="1"/><path d="M1 12l3.5-3 3.5 3"/><rect x="9" y="10" width="7" height="9" rx="1"/><path d="M9 10l3.5-3 3.5 3"/><rect x="17" y="12" width="6" height="7" rx="1"/><path d="M17 12l3-3 3 3"/></svg></span> Data Cabang</h2><p>Kelola toko Raja Vapor berdasarkan area</p></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn btn-primary" onclick="openTambahCabang()" id="btn-tambah-cabang">+ Tambah Toko</button>
         </div>
       </div>
       <div class="tabs" id="cabang-tabs">
-        <button class="tab-btn active" onclick="switchCabangTab('data',this)">🏬 Data Cabang</button>
-        <button class="tab-btn" onclick="switchCabangTab('target',this)">🎯 Target Omzet</button>
-        <button class="tab-btn" onclick="switchCabangTab('sewa',this)">🏠 Sewa Toko</button>
+        <button class="tab-btn active" onclick="switchCabangTab('data',this)"><span class="rv-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="12" width="7" height="7" rx="1"/><path d="M1 12l3.5-3 3.5 3"/><rect x="9" y="10" width="7" height="9" rx="1"/><path d="M9 10l3.5-3 3.5 3"/><rect x="17" y="12" width="6" height="7" rx="1"/><path d="M17 12l3-3 3 3"/></svg></span> Data Cabang</button>
+        <button class="tab-btn" onclick="switchCabangTab('target',this)"><span class="rv-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span> Target Omzet</button>
+        <button class="tab-btn" onclick="switchCabangTab('sewa',this)"><span class="rv-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18l1 7H2zM3 10v10a2 2 0 002 2h14a2 2 0 002-2V10"/><path d="M10 14.5h2.5a1.5 1.5 0 010 3H10v-3zm0 3H13M10 14v7M14.5 14v.5"/></svg></span> Sewa Toko</button>
       </div>
 
       <!-- TAB DATA CABANG -->
@@ -3078,13 +3087,13 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
     <!-- POS PRODUK -->
     <div id="pg-pos-produk" class="content">
       <div class="page-head">
-        <div class="page-head-left"><h2>🛍️ Manajemen Produk</h2><p>Master produk kasir POS beserta stok per cabang</p></div>
+        <div class="page-head-left"><h2><span class="rv-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span> Manajemen Produk</h2><p>Master produk kasir POS beserta stok per cabang</p></div>
         <div id="pos-produk-actions" style="display:flex;gap:8px;flex-wrap:wrap"></div>
       </div>
       <div class="tabs" style="margin-bottom:12px">
-        <button class="tab-btn active" onclick="switchProdukTab('produk',this)">🛍️ Produk</button>
-        <button class="tab-btn" onclick="switchProdukTab('paket',this)">📦 Paket</button>
-        <button class="tab-btn" onclick="switchProdukTab('barcode',this)">🔖 Barcode</button>
+        <button class="tab-btn active" onclick="switchProdukTab('produk',this)"><span class="rv-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span> Produk</button>
+        <button class="tab-btn" onclick="switchProdukTab('paket',this)"><span class="rv-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg></span> Paket</button>
+        <button class="tab-btn" onclick="switchProdukTab('barcode',this)"><span class="rv-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg></span> Barcode</button>
       </div>
       <div id="produk-tab-produk">
       <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
@@ -3108,8 +3117,8 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
       <div id="pos-produk-info" style="font-size:12px;color:var(--muted);margin-bottom:8px"></div>
       <div class="card">
         <div class="tbl-wrap"><table>
-          <thead><tr><th>SKU</th><th>Nama</th><th>Kategori</th><th style="text-align:right;cursor:pointer;user-select:none" onclick="sortPosProduk('harga_jual')">Harga Jual <span id="sort-icon-harga_jual" style="font-size:10px;opacity:.5">↕</span></th><th style="text-align:right;cursor:pointer;user-select:none" onclick="sortPosProduk('harga_modal')">Harga Modal <span id="sort-icon-harga_modal" style="font-size:10px;opacity:.5">↕</span></th><th style="text-align:right;cursor:pointer;user-select:none" onclick="sortPosProduk('komisi')">Komisi <span id="sort-icon-komisi" style="font-size:10px;opacity:.5">↕</span></th><th style="text-align:right">Poin</th><th>Satuan</th><th style="text-align:center;cursor:pointer;user-select:none" onclick="sortPosProduk('stok')">Total Stok <span id="sort-icon-stok" style="font-size:10px;opacity:.5">↕</span></th><th style="text-align:center">Min Stok</th><th>Status</th><th style="text-align:center">Aksi</th></tr></thead>
-          <tbody id="pos-produk-body"><tr class="loading-row"><td colspan="11">Memuat…</td></tr></tbody>
+          <thead><tr><th style="width:40px;text-align:center;padding:0"><label style="display:flex;align-items:center;justify-content:center;cursor:pointer;padding:8px;margin:0"><input type="checkbox" id="pp-select-all" onchange="ppToggleAll(this.checked)" title="Pilih semua" style="width:18px;height:18px;cursor:pointer;accent-color:var(--brand)"></label></th><th>SKU</th><th>Nama</th><th>Kategori</th><th style="text-align:right;cursor:pointer;user-select:none" onclick="sortPosProduk('harga_jual')">Harga Jual <span id="sort-icon-harga_jual" style="font-size:10px;opacity:.5">↕</span></th><th style="text-align:right;cursor:pointer;user-select:none" onclick="sortPosProduk('harga_modal')">Harga Modal <span id="sort-icon-harga_modal" style="font-size:10px;opacity:.5">↕</span></th><th style="text-align:right;cursor:pointer;user-select:none" onclick="sortPosProduk('komisi')">Komisi <span id="sort-icon-komisi" style="font-size:10px;opacity:.5">↕</span></th><th style="text-align:right">Poin</th><th>Satuan</th><th style="text-align:center;cursor:pointer;user-select:none" onclick="sortPosProduk('stok')">Total Stok <span id="sort-icon-stok" style="font-size:10px;opacity:.5">↕</span></th><th style="text-align:center">Min Stok</th><th>Status</th><th style="text-align:center">Aksi</th></tr></thead>
+          <tbody id="pos-produk-body"><tr class="loading-row"><td colspan="13">Memuat…</td></tr></tbody>
         </table></div>
       </div>
       </div><!-- /produk-tab-produk -->
@@ -3131,7 +3140,7 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
       <!-- TAB BARCODE -->
       <div id="produk-tab-barcode" style="display:none">
         <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
-          <button class="btn btn-primary" onclick="generateAllBarcode()">🔖 Generate Semua Barcode</button>
+          <button class="btn btn-primary" onclick="generateAllBarcode()"><span class="rv-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg></span> Generate Semua Barcode</button>
           <select id="bc-filter" class="form-select" style="width:180px" onchange="loadBarcodeList()">
             <option value="">Semua Produk</option>
             <option value="no">Belum Punya Barcode</option>
@@ -5156,7 +5165,7 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
   <div class="modal" style="max-width:820px;width:96vw">
     <div class="modal-head">
       <div>
-        <h3>🔐 Hak Akses Staff</h3>
+        <h3><span class="rv-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></span> Hak Akses Staff</h3>
         <div id="hak-akses-nama" style="font-size:13px;color:var(--muted);font-weight:500;margin-top:2px"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
@@ -5296,7 +5305,7 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
 <!-- MODAL EDIT USER -->
 <div class="modal-bg" id="modal-edit-user">
   <div class="modal" style="max-width:480px">
-    <div class="modal-head"><h3>✏️ Edit User</h3><button class="modal-close" onclick="closeModal('modal-edit-user')">✕</button></div>
+    <div class="modal-head"><h3><span class="rv-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/></svg></span> Edit User</h3><button class="modal-close" onclick="closeModal('modal-edit-user')">✕</button></div>
     <div class="modal-body">
       <div class="form-grid">
         <div class="fg"><label class="form-label">Username</label><input id="eu-username" class="form-input" placeholder="username"></div>
@@ -5353,7 +5362,7 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
 <!-- MODAL GANTI PASSWORD -->
 <div class="modal-bg" id="modal-ganti-pass">
   <div class="modal" style="max-width:420px">
-    <div class="modal-head"><h3>🔑 Ganti Password</h3><button class="modal-close" onclick="closeModal('modal-ganti-pass')">✕</button></div>
+    <div class="modal-head"><h3><span class="rv-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.78 7.78 5.5 5.5 0 017.78-7.78zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></span> Ganti Password</h3><button class="modal-close" onclick="closeModal('modal-ganti-pass')">✕</button></div>
     <div class="modal-body">
       <div class="form-grid g1">
         <div class="fg"><label class="form-label">Password Baru</label><input type="password" id="gp-pass" class="form-input" placeholder="Minimal 6 karakter"></div>
@@ -7247,6 +7256,7 @@ async function doLogin() {
       resetSessionTimer();
       await Promise.all([fetchUserNavAkses(), fetchUserPermissions(), loadIconOverrides()]);
       buildNav();
+      applyDefaultSVGIcons();
       loadMasterData();
       initNotifSystem();
       if (IS_APK) { appBuildBottomNav(); appUpdateTopBar(); }
@@ -7448,6 +7458,7 @@ function toggleSbGroup(groupId) {
   setTimeout(() => {
     loadIconOverrides().then(() => {
       buildNav();
+      applyDefaultSVGIcons();
       loadMasterData();
       initNotifSystem();
       if (IS_APK) { appBuildBottomNav(); appUpdateTopBar(); }
@@ -7618,7 +7629,7 @@ function appRenderBottomNav() {
     var iconPath = svgs[m.icon] || svgs['grid'];
     var isNotif = m.menu_key === 'app-notif';
     html += '<button class="bnav-tab" data-tab="'+m.menu_key+'" onclick="appNavTab(\''+m.menu_key+'\')">';
-    html += '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'+iconPath+'</svg>';
+    html += '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+iconPath+'</svg>';
     html += '<span>'+m.label+'</span>';
     if (isNotif) html += '<span class="bnav-badge" id="bnav-notif-badge" style="display:none">0</span>';
     html += '</button>';
@@ -8975,11 +8986,11 @@ function renderUsersGrouped(data) {
               <td style="padding:8px;text-align:center">${u.aktif?'<span class="badge badge-green">Aktif</span>':'<span class="badge badge-gray">Nonaktif</span>'}</td>
               <td style="padding:8px;text-align:center">
                 <div style="display:flex;gap:4px;justify-content:center;flex-wrap:nowrap">
-                  ${(canManage||isSelf)&&hasPerm('staff.edit')?`<button class="btn btn-ghost btn-xs" onclick="openEditUser(${u.id},'${u.username}','${(u.nama_lengkap||'').replace(/'/g,"\\'")}','${u.role}',${u.cabang_id||null},${u.aktif})">✏️</button>`:''}
-                  ${(canManage||isSelf)&&hasPerm('staff.ganti_password')?`<button class="btn btn-ghost btn-xs" onclick="openGantiPass(${u.id})">🔑</button>`:''}
-                  ${(USER.role==='owner'&&isManagerType)&&hasPerm('staff.assign_cabang')?`<button class="btn btn-ghost btn-xs" onclick="openAssignCabang(${u.id},'${(u.nama_lengkap||u.username).replace(/'/g,"\\'")}','${u.role}')">🏬</button>`:''}
-                  ${USER.role==='owner'&&!isSelf&&hasPerm('staff.hak_akses')?`<button class="btn btn-ghost btn-xs" onclick="openHakAkses(${u.id},'${(u.nama_lengkap||u.username).replace(/'/g,"\\'")}','${u.role}')">🔐</button>`:''}
-                  ${canManage&&!isSelf&&hasPerm('staff.hapus')?`<button class="btn btn-danger btn-xs" onclick="deleteUser(${u.id})">🗑</button>`:''}
+                  ${(canManage||isSelf)&&hasPerm('staff.edit')?`<button class="btn btn-ghost btn-xs" onclick="openEditUser(${u.id},'${u.username}','${(u.nama_lengkap||'').replace(/'/g,"\\'")}','${u.role}',${u.cabang_id||null},${u.aktif})" title="Edit profil & role">${_svg('edit')}</button>`:''}
+                  ${(canManage||isSelf)&&hasPerm('staff.ganti_password')?`<button class="btn btn-ghost btn-xs" onclick="openGantiPass(${u.id})" title="Ganti password">${_svg('key')}</button>`:''}
+                  ${(USER.role==='owner'&&isManagerType)&&hasPerm('staff.assign_cabang')?`<button class="btn btn-ghost btn-xs" onclick="openAssignCabang(${u.id},'${(u.nama_lengkap||u.username).replace(/'/g,"\\'")}','${u.role}')" title="Assign cabang">${_svg('store')}</button>`:''}
+                  ${USER.role==='owner'&&!isSelf&&hasPerm('staff.hak_akses')?`<button class="btn btn-ghost btn-xs" onclick="openHakAkses(${u.id},'${(u.nama_lengkap||u.username).replace(/'/g,"\\'")}','${u.role}')" title="Hak akses">${_svg('lock')}</button>`:''}
+                  ${canManage&&!isSelf&&hasPerm('staff.hapus')?`<button class="btn btn-danger btn-xs" onclick="deleteUser(${u.id})" title="Hapus user">${_svg('trash')}</button>`:''}
                 </div>
               </td>
             </tr>`;
@@ -9005,10 +9016,10 @@ function renderUsersFlat(data) {
       <td>${u.nama_cabang||'—'}</td>
       <td>${u.aktif?'<span class="badge badge-green">Aktif</span>':'<span class="badge badge-gray">Nonaktif</span>'}</td>
       <td><div class="td-actions">
-        ${(canManage||isSelf)&&hasPerm('staff.edit')?`<button class="btn btn-ghost btn-xs" onclick="openEditUser(${u.id},'${u.username}','${(u.nama_lengkap||'').replace(/'/g,"\\'")}','${u.role}',${u.cabang_id||null})">Edit</button>`:''}
-        ${(canManage||isSelf)&&hasPerm('staff.ganti_password')?`<button class="btn btn-ghost btn-xs" onclick="openGantiPass(${u.id})">🔑</button>`:''}
-        ${(USER.role==='owner'&&isManagerType)&&hasPerm('staff.assign_cabang')?`<button class="btn btn-ghost btn-xs" onclick="openAssignCabang(${u.id},'${(u.nama_lengkap||u.username).replace(/'/g,"\\'")}','${u.role}')">🏬 Cabang</button>`:''}
-        ${USER.role==='owner'&&hasPerm('staff.hak_akses')?`<button class="btn btn-ghost btn-xs" onclick="openHakAkses(${u.id},'${(u.nama_lengkap||u.username).replace(/'/g,"\\'")}','${u.role}')">🔐</button>`:''}
+        ${(canManage||isSelf)&&hasPerm('staff.edit')?`<button class="btn btn-ghost btn-xs" onclick="openEditUser(${u.id},'${u.username}','${(u.nama_lengkap||'').replace(/'/g,"\\'")}','${u.role}',${u.cabang_id||null})" title="Edit profil & role">${_svg('edit')} Edit</button>`:''}
+        ${(canManage||isSelf)&&hasPerm('staff.ganti_password')?`<button class="btn btn-ghost btn-xs" onclick="openGantiPass(${u.id})" title="Ganti password">${_svg('key')}</button>`:''}
+        ${(USER.role==='owner'&&isManagerType)&&hasPerm('staff.assign_cabang')?`<button class="btn btn-ghost btn-xs" onclick="openAssignCabang(${u.id},'${(u.nama_lengkap||u.username).replace(/'/g,"\\'")}','${u.role}')" title="Assign cabang">${_svg('store')} Cabang</button>`:''}
+        ${USER.role==='owner'&&hasPerm('staff.hak_akses')?`<button class="btn btn-ghost btn-xs" onclick="openHakAkses(${u.id},'${(u.nama_lengkap||u.username).replace(/'/g,"\\'")}','${u.role}')" title="Hak akses">${_svg('lock')}</button>`:''}
       </div></td>
     </tr>`;
   }).join('');
@@ -9219,7 +9230,7 @@ async function loadCabang() {
 function renderCabangGrouped(data) {
   const canEdit = ['owner','head_operational','admin_pusat'].includes(USER.role);
   if (!data.length) {
-    document.getElementById('cabang-grouped').innerHTML = '<div style="padding:48px;text-align:center;color:var(--muted)"><div style="font-size:40px;margin-bottom:12px">🏬</div><p>Belum ada data toko.</p></div>';
+    document.getElementById('cabang-grouped').innerHTML = '<div style="padding:48px;text-align:center;color:var(--muted)"><div style="margin-bottom:12px;opacity:.4">'+_svg('store-group','xl')+'</div><p>Belum ada data toko.</p></div>';
     return;
   }
 
@@ -9238,7 +9249,7 @@ function renderCabangGrouped(data) {
     const totalToko = Object.values(spvMap).reduce((s,arr) => s+arr.length, 0);
     html += `<div style="margin-bottom:24px">
       <div style="padding:12px 16px;background:var(--brand);color:#fff;border-radius:10px 10px 0 0;display:flex;align-items:center;gap:10px">
-        <span style="font-size:18px">👔</span>
+        <span style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;background:rgba(255,255,255,.15);border-radius:8px">${_svg('map')}</span>
         <div>
           <div style="font-weight:700;font-size:15px">${mgr}</div>
           <div style="font-size:12px;opacity:.8">Manajer Area · ${totalToko} toko</div>
@@ -9248,7 +9259,7 @@ function renderCabangGrouped(data) {
     Object.entries(spvMap).forEach(([spv, tokos]) => {
       html += `<div style="border:1.5px solid var(--border);border-top:none;border-radius:0 0 0 0">
         <div style="padding:10px 16px 10px 32px;background:var(--brand-l);display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)">
-          <span>🗂️</span>
+          <span style="color:var(--brand-d)">${_svg('crosshair')}</span>
           <span style="font-weight:600;font-size:13px;color:var(--brand-d)">${spv}</span>
           <span style="font-size:12px;color:var(--muted);margin-left:4px">· ${tokos.length} toko</span>
         </div>
@@ -15589,20 +15600,20 @@ async function initPosProdukPage() {
       const cr = await api('/cabang');
       const list = (cr.data||[]).filter(c=>c.aktif);
       sel.innerHTML = '<option value="0">-- Semua Cabang --</option>' + list.map(c=>`<option value="${c.id}">${c.nama}</option>`).join('');
+      // Default: owner → GUDANG RETAIL (id=4)
+      if (USER.role === 'owner') sel.value = '4';
     } catch(e) { sel.innerHTML = '<option value="0">-- Semua Cabang --</option>'; }
   }
   // Render action buttons based on role
   const acts = document.getElementById('pos-produk-actions');
   const isOwner = USER.role === 'owner';
   acts.innerHTML = isOwner ? `
-    <button class="btn btn-ghost" onclick="exportPosProduk()">📥 Export</button>
-    <button class="btn btn-ghost" onclick="downloadPosProdukTemplate()">📋 Template</button>
-    <label class="btn btn-ghost" style="cursor:pointer">📤 Import<input type="file" id="import-pos-produk-file" accept=".xlsx,.xls" style="display:none" onchange="importPosProduk(this)"></label>
-    <button class="btn btn-ghost" style="border-color:var(--blue);color:var(--blue)" onclick="openExportCabang()">📥 Export Cabang</button>
-    <button class="btn btn-ghost" style="border-color:var(--blue);color:var(--blue)" onclick="openImportCabang()">📤 Import Cabang</button>
-    <button class="btn btn-ghost" style="border-color:var(--purple);color:var(--purple)" onclick="openPindahCabang()">🔀 Pindah Cabang</button>
-    <button class="btn btn-danger btn-sm" onclick="hapusSemuaDataCabang()">🗑️ Hapus Data Cabang</button>
-    <button class="btn btn-primary" onclick="openAddPosProduk()">+ Tambah Produk</button>
+    <button class="btn btn-ghost" onclick="exportPosProduk()">${_svg('download')} Export</button>
+    <button class="btn btn-ghost" onclick="downloadPosProdukTemplate()">${_svg('file-text')} Template</button>
+    <label class="btn btn-ghost" style="cursor:pointer">${_svg('upload')} Import<input type="file" id="import-pos-produk-file" accept=".xlsx,.xls" style="display:none" onchange="importPosProduk(this)"></label>
+    <button class="btn btn-ghost" style="border-color:var(--purple);color:var(--purple)" onclick="openPindahCabang()">${_svg('repeat')} Pindah Cabang</button>
+    <button class="btn btn-danger btn-sm" onclick="hapusSemuaDataCabang()">${_svg('trash')} Hapus Data Cabang</button>
+    <button class="btn btn-primary" onclick="openAddPosProduk()">${_svg('plus')} Tambah Produk</button>
   ` : '';
   loadPosProduk();
 }
@@ -15615,7 +15626,7 @@ let _PP_TOTAL = 0;
 
 async function loadPosProduk(page) {
   _PP_PAGE = page || 1;
-  document.getElementById('pos-produk-body').innerHTML = '<tr class="loading-row"><td colspan="11">Memuat…</td></tr>';
+  document.getElementById('pos-produk-body').innerHTML = '<tr class="loading-row"><td colspan="13">Memuat…</td></tr>';
   try {
     const cabId = document.getElementById('pos-produk-cabang').value || '0';
     const aktif = document.getElementById('pos-produk-aktif').value;
@@ -15637,7 +15648,7 @@ async function loadPosProduk(page) {
     if (info) info.textContent = _PP_TOTAL>0 ? `Menampilkan ${from}–${to} dari ${_PP_TOTAL} produk (Halaman ${_PP_PAGE}/${_PP_TOTAL_PAGES})` : 'Tidak ada produk';
     renderPosProduk();
   } catch(e) {
-    document.getElementById('pos-produk-body').innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--red);padding:32px">Gagal memuat data produk. Periksa koneksi.<br><button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="loadPosProduk()">🔄 Coba Lagi</button></td></tr>';
+    document.getElementById('pos-produk-body').innerHTML = '<tr><td colspan="13" style="text-align:center;color:var(--red);padding:32px">Gagal memuat data produk. Periksa koneksi.<br><button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="loadPosProduk()">🔄 Coba Lagi</button></td></tr>';
   }
 }
 
@@ -15659,13 +15670,20 @@ function filterPosProduk(q) {
   _ppSearchTimer = setTimeout(() => loadPosProduk(1), 350);
 }
 
+let _ppSelected = new Set();
+
 function renderPosProduk() {
   const isOwner = USER.role === 'owner';
+  const selAll = document.getElementById('pp-select-all');
+  if (selAll) selAll.checked = false;
+  _ppSelected.clear();
+  ppUpdateBulkBar();
   document.getElementById('pos-produk-body').innerHTML = POS_PRODUK_FILTERED.length
     ? POS_PRODUK_FILTERED.map(p=>{
         const stokTotal = parseInt(p.stok||0);
         const stokColor = stokTotal===0?'var(--red)':stokTotal<=10?'#D97706':'#059669';
-        return `<tr style="${p.aktif?'':'opacity:.5'}">
+        return `<tr style="${p.aktif?'':'opacity:.5'}" id="pp-row-${p.id}">
+          <td style="text-align:center;padding:0"><label style="display:flex;align-items:center;justify-content:center;cursor:pointer;padding:8px;margin:0"><input type="checkbox" class="pp-chk" data-id="${p.id}" onchange="ppToggleItem(${p.id},this.checked)" style="width:18px;height:18px;cursor:pointer;accent-color:var(--brand)"></label></td>
           <td class="td-mono" style="font-size:11px">${p.sku}</td>
           <td><b>${p.nama}</b></td>
           <td style="font-size:12px">${p.kategori||'—'}</td>
@@ -15678,14 +15696,56 @@ function renderPosProduk() {
           <td style="text-align:center;font-size:12px;color:${p.stok_minimum>0?'var(--text)':'var(--muted-l)'}">${p.stok_minimum>0?p.stok_minimum:'—'}</td>
           <td>${p.aktif?'<span class="badge badge-green">Aktif</span>':'<span class="badge badge-gray">Nonaktif</span>'}</td>
           <td><div class="td-actions">
-            ${isOwner?`<button class="btn btn-ghost btn-xs" onclick="openEditPosProduk(${JSON.stringify(p).replace(/"/g,'&quot;')})">✏️</button>
-            <button class="btn btn-danger btn-xs" onclick="deletePosProduk(${p.id},'${(p.nama||'').replace(/'/g,"\\'")}')">🗑️</button>`:''}
+            ${isOwner?`<button class="btn btn-ghost btn-xs" onclick="openEditPosProduk(${JSON.stringify(p).replace(/"/g,'&quot;')})" title="Edit">${_svg('edit')}</button>
+            <button class="btn btn-ghost btn-xs" style="color:var(--red)" onclick="deletePosProduk(${p.id},'${(p.nama||'').replace(/'/g,"\\'")}')\" title="Hapus">${_svg('trash')}</button>`:''}
           </div></td>
         </tr>`;
       }).join('')
-    : '<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:32px">Belum ada produk. Import dari Excel.</td></tr>';
-  // Pagination
+    : '<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:32px">Belum ada produk. Import dari Excel.</td></tr>';
   renderPosProdukPagination();
+}
+
+function ppToggleAll(checked) {
+  document.querySelectorAll('.pp-chk').forEach(cb => { cb.checked = checked; ppToggleItem(parseInt(cb.dataset.id), checked, true); });
+  ppUpdateBulkBar();
+}
+function ppToggleItem(id, checked, skipUpdate) {
+  if (checked) _ppSelected.add(id); else _ppSelected.delete(id);
+  const row = document.getElementById('pp-row-'+id);
+  if (row) row.style.background = checked ? 'rgba(193,18,31,.06)' : '';
+  if (!skipUpdate) {
+    ppUpdateBulkBar();
+    const allChks = document.querySelectorAll('.pp-chk');
+    const selAll = document.getElementById('pp-select-all');
+    if (selAll && allChks.length) selAll.checked = _ppSelected.size === allChks.length;
+  }
+}
+function ppUpdateBulkBar() {
+  let bar = document.getElementById('pp-bulk-bar');
+  if (_ppSelected.size === 0) { if (bar) bar.style.display = 'none'; return; }
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'pp-bulk-bar';
+    bar.style.cssText = 'position:sticky;bottom:0;background:var(--surface);border-top:2px solid var(--red);padding:12px 16px;display:flex;align-items:center;gap:12px;z-index:10;box-shadow:0 -4px 12px rgba(0,0,0,.08)';
+    document.getElementById('pos-produk-body').closest('.card').appendChild(bar);
+  }
+  bar.style.display = 'flex';
+  const isOwner = USER.role === 'owner';
+  bar.innerHTML = `<span style="font-weight:700;font-size:14px;color:var(--brand)">${_ppSelected.size} produk dipilih</span>
+    ${isOwner?`<button class="btn btn-danger btn-sm" onclick="ppBulkDelete()">${_svg('trash')} Hapus Terpilih</button>`:''}
+    <button class="btn btn-ghost btn-sm" onclick="ppToggleAll(false);document.getElementById('pp-select-all').checked=false">Batal</button>`;
+}
+async function ppBulkDelete() {
+  const sel = document.getElementById('pos-produk-cabang');
+  const cabId = sel?.value || '0';
+  if (cabId === '0') { toast('Pilih cabang dulu sebelum menghapus.','error'); return; }
+  const cabLabel = sel.selectedOptions[0]?.textContent || '';
+  const ids = [..._ppSelected];
+  if (!confirm(`Hapus ${ids.length} produk dari ${cabLabel}?`)) return;
+  toast(`Menghapus ${ids.length} produk dari ${cabLabel}…`, 'info');
+  const res = await api('/pos/produk/bulk-delete', 'POST', { ids, cabang_id: parseInt(cabId) });
+  if (res.success) { toast(res.message, 'success'); _ppSelected.clear(); loadPosProduk(_PP_PAGE); }
+  else toast(res.message || 'Gagal.', 'error');
 }
 
 function renderPosProdukPagination() {
@@ -15836,11 +15896,18 @@ async function hapusFotoPosProduk() {
 
 async function exportPosProduk() {
   try {
-    const res = await fetch('/api/pos/produk/export',{headers:{'Authorization':'Bearer '+TOKEN}});
+    const cabId = document.getElementById('pos-produk-cabang')?.value || '0';
+    if (!cabId || cabId === '0') {
+      toast('Pilih cabang dulu di dropdown sebelum export.','error');
+      return;
+    }
+    const cabLabel = document.getElementById('pos-produk-cabang').selectedOptions[0]?.textContent || '';
+    toast(`Mengexport produk ${cabLabel}…`,'info');
+    const res = await fetch('/api/pos/produk/export-cabang?cabang_id='+cabId,{headers:{'Authorization':'Bearer '+TOKEN}});
     if (!res.ok){toast('Gagal export.','error');return;}
     const blob=await res.blob();
     const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');a.href=url;a.download='produk_pos_RajaVapor.xlsx';a.click();
+    const a=document.createElement('a');a.href=url;a.download='produk_'+cabLabel.replace(/\s+/g,'_')+'.xlsx';a.click();
     URL.revokeObjectURL(url); toast('Export berhasil!','success');
   } catch(e){toast('Error: '+e.message,'error');}
 }
@@ -15858,24 +15925,35 @@ async function downloadPosProdukTemplate() {
 async function importPosProduk(input) {
   const file=input.files[0]; if(!file) return;
   const cabId = document.getElementById('pos-produk-cabang')?.value || '0';
-  const fd=new FormData(); fd.append('file',file);
-  if (cabId && cabId !== '0') fd.append('cabang_id', cabId);
+  if (!cabId || cabId === '0') {
+    toast('Pilih cabang dulu di dropdown sebelum import.','error');
+    input.value='';
+    return;
+  }
+  const fd=new FormData(); fd.append('file',file); fd.append('cabang_id', cabId);
   input.value='';
-  const cabLabel = cabId && cabId !== '0'
-    ? document.getElementById('pos-produk-cabang').selectedOptions[0]?.textContent || ''
-    : '';
-  toast(cabLabel ? `Mengimport ke ${cabLabel}…` : 'Mengimport produk…','info');
-  const res=await fetch('/api/pos/produk/import',{method:'POST',headers:{'Authorization':'Bearer '+TOKEN},body:fd});
+  const cabLabel = document.getElementById('pos-produk-cabang').selectedOptions[0]?.textContent || '';
+  toast(`Mengimport ke ${cabLabel}…`,'info');
+  const res=await fetch('/api/pos/produk/import-cabang',{method:'POST',headers:{'Authorization':'Bearer '+TOKEN},body:fd});
   const d=await res.json();
   if(d.success){toast(d.message,'success');loadPosProduk();}
   else toast(d.message||'Gagal.','error');
 }
 
 async function deletePosProduk(id, nama) {
-  if (!confirm(`Hapus produk "${nama}"?\n\nProduk yang sudah ada transaksi tidak bisa dihapus.`)) return;
-  const res = await api('/pos/produk/'+id, 'DELETE');
+  if (_ppSelected.size > 0) {
+    _ppSelected.add(id);
+    ppBulkDelete();
+    return;
+  }
+  const sel = document.getElementById('pos-produk-cabang');
+  const cabId = sel?.value || '0';
+  if (cabId === '0') { toast('Pilih cabang dulu sebelum menghapus.','error'); return; }
+  const cabLabel = sel.selectedOptions[0]?.textContent || '';
+  if (!confirm(`Hapus "${nama}" dari ${cabLabel}?`)) return;
+  const res = await api('/pos/produk/'+id+'?cabang_id='+cabId, 'DELETE');
   if (res.success) { toast(res.message,'success'); loadPosProduk(); }
-  else toast(res.message||'Gagal menghapus.','error');
+  else toast(res.message||'Gagal.','error');
 }
 
 // ── EXPORT / IMPORT / PINDAH CABANG (OWNER) ──────────────────────────────
@@ -23211,16 +23289,16 @@ async function loadNotifList() {
 
     if (!rows.length) {
       list.innerHTML = `<div style="padding:60px 20px;text-align:center">
-        <div style="font-size:40px;margin-bottom:12px;opacity:.3">🔔</div>
+        <div style="margin-bottom:12px;opacity:.3;color:rgba(255,255,255,.5)">${_svg('bell','xl')}</div>
         <div style="font-size:13px;color:rgba(255,255,255,.3)">Tidak ada notifikasi</div>
       </div>`;
       return;
     }
-    const tipeIcon = {stok_habis:'📦',request_masuk:'📋',retur_pending:'🔄',target_tercapai:'🎯',sewa_jatuh_tempo:'🔔',info:'💬'};
+    const tipeIcon = {stok_habis:_svg('package'),request_masuk:_svg('clipboard'),retur_pending:_svg('refresh-cw'),target_tercapai:_svg('target'),sewa_jatuh_tempo:_svg('bell'),info:_svg('message')};
     const tipeColor = {stok_habis:'#EF4444',request_masuk:'#F59E0B',retur_pending:'#8B5CF6',target_tercapai:'#10B981',sewa_jatuh_tempo:'#EF4444',info:'#3B82F6'};
 
     list.innerHTML = rows.slice(0,30).map(n => {
-      const icon = tipeIcon[n.tipe] || '🔔';
+      const icon = tipeIcon[n.tipe] || _svg('bell');
       const color = tipeColor[n.tipe] || '#3B82F6';
       const ago = timeAgo(n.created_at);
       const unread = !n.dibaca;
@@ -23658,6 +23736,7 @@ const ICON_REGISTRY = [
   {group:'Role Label', items:[
     {key:'role.owner',          emoji:'👑', ctx:'Label Role Owner'},
     {key:'role.manajer',        emoji:'🧑‍💼', ctx:'Label Role Manajer'},
+    {key:'role.manajer_area',   emoji:'📋', ctx:'Label Role Manajer Area'},
     {key:'role.head_op',        emoji:'⚙️', ctx:'Label Role Head Operational'},
     {key:'role.admin_pusat',    emoji:'🏢', ctx:'Label Role Admin Pusat'},
     {key:'role.spv_area',       emoji:'🗺️', ctx:'Label Role SPV Area'},
@@ -23689,14 +23768,352 @@ const ICON_REGISTRY = [
 // Icon overrides yang di-load dari server
 let ICON_OVERRIDES = {};
 
-// Ambil icon: return override jika ada, else default
+// ═══ UNIFIED SVG ICON PATHS — iOS / One UI 8 Design Language ═══
+// 24×24 viewBox, stroke-based, rounded caps/joins, 1.8px stroke
+const _svgP = {
+  home:'<path d="M3 10.2L12 3l9 7.2V20a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22v-7h6v7"/>',
+  users:'<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>',
+  user:'<path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  store:'<path d="M3 3h18l1 7H2zM3 10v10a2 2 0 002 2h14a2 2 0 002-2V10"/><path d="M9 22v-6h6v6"/>',
+  package:'<path d="M16.5 9.4L7.5 4.2"/><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.27 6.96L12 12l8.73-5.04M12 22.08V12"/>',
+  'shopping-bag':'<path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 01-8 0"/>',
+  layers:'<polygon points="12 2 2 7 12 12 22 7"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>',
+  clipboard:'<path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/>',
+  repeat:'<polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/>',
+  'shopping-cart':'<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/>',
+  target:'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  'bar-chart':'<rect x="18" y="3" width="4" height="18" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="2" y="13" width="4" height="8" rx="1"/>',
+  'alert-triangle':'<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4M12 17h.01"/>',
+  building:'<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M16 6h.01M8 10h.01M16 10h.01M8 14h.01M16 14h.01"/>',
+  'file-text':'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>',
+  'credit-card':'<rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/>',
+  truck:'<path d="M1 3h15v13H1z"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
+  handshake:'<path d="M20.42 4.58a5.4 5.4 0 00-7.65 0l-.77.78-.77-.78a5.4 5.4 0 00-7.65 0A5.4 5.4 0 003.58 12L12 20.42 20.42 12a5.4 5.4 0 000-7.42z"/>',
+  'trending-up':'<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
+  wallet:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><circle cx="18" cy="15" r="1"/>',
+  'circle-arrow-down':'<circle cx="12" cy="12" r="10"/><path d="M8 12l4 4 4-4M12 8v8"/>',
+  'circle-arrow-up':'<circle cx="12" cy="12" r="10"/><path d="M16 12l-4-4-4 4M12 16V8"/>',
+  clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  banknote:'<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
+  briefcase:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/>',
+  film:'<rect x="2" y="2" width="20" height="20" rx="2.18"/><path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5"/>',
+  archive:'<path d="M21 8v13H3V8"/><rect x="1" y="3" width="22" height="5" rx="1"/><path d="M10 12h4"/>',
+  list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  monitor:'<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>',
+  settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>',
+  dollar:'<path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>',
+  'pie-chart':'<path d="M21.21 15.89A10 10 0 118 2.83"/><path d="M22 12A10 10 0 0012 2v10z"/>',
+  tag:'<path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><path d="M7 7h.01"/>',
+  scroll:'<path d="M8 21h12a2 2 0 002-2v-2H10v2a2 2 0 11-4 0V5a2 2 0 10-4 0v3h7"/><path d="M19 17V5a2 2 0 00-2-2H4"/>',
+  'refresh-cw':'<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>',
+  code:'<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
+  coins:'<circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1110.34 18M7 6h1v4"/>',
+  history:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/><path d="M2 12h2"/>',
+  flame:'<path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.07-2.14 0-5.5 2-6.5 0 3.5 2 5.5 3.5 7.5.8 1.07 1.5 2.15 1.5 3.5a4.5 4.5 0 11-9 0c0-.98.34-1.81 1-2.5z"/>',
+  search:'<circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>',
+  folder:'<path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>',
+  upload:'<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><path d="M12 3v12"/>',
+  download:'<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><path d="M12 15V3"/>',
+  calculator:'<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/>',
+  'check-circle':'<path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/>',
+  'x-circle':'<circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/>',
+  edit:'<path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4z"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  trash:'<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>',
+  eye:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+  save:'<path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
+  bell:'<path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>',
+  message:'<path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>',
+  droplet:'<path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/>',
+  flask:'<path d="M9 3h6M10 3v7.4a4 4 0 00-.76 2.33L8 19.8A2 2 0 009.92 22h4.16A2 2 0 0016 19.8l-1.24-6.67A4 4 0 0014 10.4V3"/>',
+  smartphone:'<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/>',
+  zap:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/>',
+  tool:'<path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>',
+  battery:'<rect x="1" y="6" width="18" height="12" rx="2"/><path d="M23 13v-2"/>',
+  leaf:'<path d="M11 20A7 7 0 019.8 6.9C15.5 4.9 17 3.5 19 2c1 2 2 4.5 2 8 0 5.5-3.8 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/>',
+  cpu:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/>',
+  circle:'<circle cx="12" cy="12" r="10"/>',
+  crown:'<path d="M2 20h20M4 17l2-12 4 5 2-7 2 7 4-5 2 12"/>',
+  map:'<polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2"/><path d="M8 2v16M16 6v16"/>',
+  'wifi-off':'<path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0119 12.55M5 12.55a10.94 10.94 0 015.17-2.39M10.71 5.05A16 16 0 0122.56 9M1.42 9a15.91 15.91 0 014.7-2.88M8.53 16.11a6 6 0 016.95 0M12 20h.01"/>',
+  info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+  lock:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>',
+  key:'<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.78 7.78 5.5 5.5 0 017.78-7.78zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>',
+  grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  'arrow-down':'<path d="M12 5v14M19 12l-7 7-7-7"/>',
+  'arrow-up':'<path d="M12 19V5M5 12l7-7 7 7"/>',
+  receipt:'<path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 3 2V2l-3 2-3-2-3 2-3-2-3 2z"/><path d="M8 10h8M8 14h4"/>',
+  printer:'<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+  'chart-line':'<path d="M3 3v18h18"/><path d="M7 16l4-8 4 4 4-8"/>',
+  share:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/>',
+  'star':'<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26"/>',
+  sewa:'<path d="M3 7v11a2 2 0 002 2h14a2 2 0 002-2V7"/><path d="M1 4h22v3H1z"/><path d="M10 11h4"/>',
+  'log-in':'<path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/>',
+  'log-out':'<path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>',
+  'corner-down-left':'<polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 01-4 4H4"/>',
+  'corner-up-right':'<polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 014-4h12"/>',
+  // ── NEW: Unique icons for deduplicated functions ──
+  award:'<circle cx="12" cy="8" r="6"/><path d="M15.48 11.93L17 22l-5-3-5 3 1.52-10.07"/>',
+  inbox:'<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/>',
+  'user-check':'<path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/>',
+  heart:'<path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>',
+  crosshair:'<circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/>',
+  hourglass:'<path d="M5 22h14M5 2h14M12 12L7 6.5V2h10v4.5L12 12zM12 12l5 5.5V22H7v-4.5L12 12z"/>',
+  scan:'<path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/>',
+  calendar:'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  'file-chart':'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><rect x="8" y="13" width="2" height="5"/><rect x="11" y="11" width="2" height="7"/><rect x="14" y="15" width="2" height="3"/>',
+  'clipboard-check':'<path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 14l2 2 4-4"/>',
+  'rotate-ccw':'<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>',
+  'play-circle':'<circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16"/>',
+  box:'<path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>',
+  'badge-percent':'<path d="M3.85 8.62a4 4 0 014.78-4.77 4 4 0 016.74 0 4 4 0 014.78 4.78 4 4 0 010 6.74 4 4 0 01-4.77 4.78 4 4 0 01-6.75 0 4 4 0 01-4.78-4.77 4 4 0 010-6.76z"/><line x1="15" y1="9" x2="9" y2="15"/><path d="M9 9h.01M15 15h.01"/>',
+  'file-stack':'<path d="M16 2H8a2 2 0 00-2 2v2"/><path d="M20 6H10a2 2 0 00-2 2v2"/><rect x="6" y="10" width="16" height="12" rx="2"/>',
+  shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  stamp:'<path d="M5 22h14"/><path d="M12 17V12a3 3 0 00-3-3H8a1 1 0 01-1-1V4a2 2 0 012-2h6a2 2 0 012 2v4a1 1 0 01-1 1h-1a3 3 0 00-3 3v5"/><rect x="5" y="17" width="14" height="2" rx="1"/>',
+  'file-bar-chart':'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M8 18v-3M12 18v-5M16 18v-1"/>',
+  'store-group':'<rect x="1" y="12" width="7" height="7" rx="1"/><path d="M1 12l3.5-3 3.5 3"/><rect x="9" y="10" width="7" height="9" rx="1"/><path d="M9 10l3.5-3 3.5 3"/><rect x="17" y="12" width="6" height="7" rx="1"/><path d="M17 12l3-3 3 3"/>',
+  'store-rupiah':'<path d="M3 3h18l1 7H2zM3 10v10a2 2 0 002 2h14a2 2 0 002-2V10"/><path d="M10 14.5h2.5a1.5 1.5 0 010 3H10v-3zm0 3H13M10 14v7M14.5 14v.5"/>',
+  // Role-specific person icons — orang + badge identitas
+  'user-sales':'<path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M17 7l2 2 4-4"/>',
+  'user-kasir':'<path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><rect x="16" y="6" width="7" height="5" rx="1"/><path d="M16 9h7"/>',
+  'user-kasir-sales':'<path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><rect x="15" y="3" width="8" height="6" rx="1"/><path d="M15 6h8"/><path d="M19 11v2"/>',
+  'user-vaporista':'<path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 4v4M17 6h4"/><circle cx="19" cy="12" r="2"/>',
+};
+
+// Mapping: ICON_REGISTRY key → SVG icon name
+// ★ Setiap fungsi berbeda = icon berbeda. Tidak ada duplikat semantik.
+const _icoSvgMap = {
+  // ── NAVIGASI SIDEBAR (45 items — semua unik) ──
+  'nav.dashboard':         'home',           // Dashboard utama
+  'nav.users':             'users',          // Manajemen staff
+  'nav.cabang':            'store',          // Data toko/cabang
+  'nav.produk':            'package',        // Master produk (sales)
+  'nav.pos_produk':        'grid',           // Katalog produk POS (grid view)
+  'nav.pos_stok':          'layers',         // Stok per cabang (berlapis)
+  'nav.pos_log':           'scroll',         // Log pergerakan barang (history)
+  'nav.transfer':          'repeat',         // Transfer antar cabang
+  'nav.pembelian':         'shopping-cart',   // Pembelian dari supplier
+  'nav.poin':              'award',          // Poin komisi karyawan (reward)
+  'nav.deadstock':         'inbox',          // Barang lambat jual (mengendap)
+  'nav.deadstock_mgmt':    'hourglass',      // Monitoring deadline deadstock
+  'nav.aset':              'building',       // Aset tetap & depresiasi
+  'nav.invoice':           'file-text',      // Invoice B2B
+  'nav.piutang':           'receipt',        // Piutang / tagihan belum bayar
+  'nav.supplier':          'truck',          // Supplier / pemasok
+  'nav.reseller':          'user-check',     // Reseller (verified partner)
+  'nav.entitas':           'stamp',          // Entitas bisnis / branding
+  'nav.crm':               'heart',          // CRM relasi pelanggan
+  'nav.target':            'target',         // Target sales cabang
+  'nav.forecast':          'trending-up',    // Forecast penjualan
+  'nav.kas':               'wallet',         // Kas & rekening bank
+  'nav.pemasukan':         'circle-arrow-down', // Pemasukan (uang masuk)
+  'nav.pengeluaran':       'circle-arrow-up',   // Pengeluaran (uang keluar)
+  'nav.karyawan':          'user',           // Data karyawan
+  'nav.absensi':           'calendar',       // Absensi harian (kalender)
+  'nav.payroll':           'banknote',       // Payroll gudang (gaji pokok)
+  'nav.payroll_toko':      'calculator',     // Payroll toko (kalkulasi omzet+poin)
+  'nav.payroll_spv':       'briefcase',      // Payroll SPV (manajemen)
+  'nav.konten':            'film',           // Konten video harian
+  'nav.arsip':             'archive',        // Arsip dokumen
+  'nav.request':           'clipboard',      // Request barang dari toko
+  'nav.request_produk':    'list',           // Master produk request
+  'nav.kasir':             'monitor',        // POS kasir
+  'nav.pos_setting':       'settings',       // Setting POS & struk
+  'nav.monitoring_omzet':  'bar-chart',      // Monitoring omzet harian
+  'nav.monitoring_keuntungan':'chart-line',   // Keuntungan cabang (trend)
+  'nav.monitoring_deadstock':'alert-triangle', // Alert deadstock menumpuk
+  'nav.target_staff':      'crosshair',      // Target per karyawan (personal)
+  'nav.bagi_hasil':        'pie-chart',      // Bagi hasil manajer area
+  'nav.promo':             'badge-percent',  // Promo & voucher diskon
+  'nav.member':            'star',           // Member loyalty program
+  'nav.audit_log':         'shield',         // Audit trail keamanan
+  'nav.retur':             'refresh-cw',     // Retur barang
+  'nav.developer':         'code',           // Developer tools
+  'nav.poin_saya':         'coins',          // Poin kamu (kasir view)
+  'nav.poin_history':      'history',        // Riwayat poin
+  'nav.lap_penjualan':     'file-chart',     // Laporan penjualan (dokumen+grafik)
+  'nav.lap_terlaris':      'flame',          // Produk terlaris (hot)
+  'nav.lap_kategori':      'tag',            // Kategori terlaris
+  'nav.lap_per_kasir':     'file-bar-chart', // Laporan per kasir (dokumen+bar)
+  'nav.lap_marketplace':   'shopping-bag',   // Biaya marketplace
+  'nav.monitoring_modal':  'dollar',         // Modal / capital monitoring
+  'nav.laba_rugi':         'file-chart',     // Laporan laba rugi
+  'nav.stock_opname':      'scan',           // Stock opname (barcode scan)
+  'nav.persediaan':        'box',            // Persediaan / inventory value
+  'nav.sewa':              'key',            // Sewa toko (kunci lokasi)
+  'nav.target_saya':       'target',         // Target saya (same as target)
+
+  // ── HEADER HALAMAN (13 items) ──
+  'hdr.dashboard':    'home',
+  'hdr.staff':        'users',
+  'hdr.cabang':       'store',
+  'hdr.produk':       'package',
+  'hdr.request':      'clipboard',
+  'hdr.invoice':      'file-text',
+  'hdr.kasir':        'monitor',
+  'hdr.developer':    'code',
+  'hdr.monitoring':   'bar-chart',
+  'hdr.payroll':      'banknote',
+  'hdr.konten':       'film',
+  'hdr.arsip':        'archive',
+  'hdr.poin':         'award',
+
+  // ── TAB & TOMBOL (12 items — masing-masing beda) ──
+  'tab.semua_request': 'list',          // Daftar semua
+  'tab.per_toko':      'store',         // Filter per toko
+  'tab.agregasi':      'bar-chart',     // Agregasi data
+  'tab.history':       'folder',        // Riwayat/arsip
+  'tab.upload':        'upload',        // Upload file
+  'tab.review':        'search',        // Review/periksa
+  'tab.rekap':         'file-chart',    // Rekap laporan
+  'tab.proses':        'play-circle',   // Proses berjalan
+  'tab.setup':         'settings',      // Pengaturan
+  'tab.kalkulasi':     'calculator',    // Kalkulasi/hitung
+  'tab.export':        'download',      // Export/unduh
+  'tab.import':        'upload',        // Import/unggah (sama dgn upload OK)
+
+  // ── STATUS & BADGE (6 items — visual state berbeda) ──
+  'status.pending':    'clock',         // Menunggu proses
+  'status.approved':   'check-circle',  // Disetujui/selesai
+  'status.rejected':   'x-circle',      // Ditolak
+  'status.warehouse':  'inbox',         // Sudah di gudang
+  'status.shipped':    'truck',         // Sedang dikirim
+  'status.draft':      'edit',          // Masih draft
+
+  // ── AKSI (8 items) ──
+  'act.tambah':  'plus',               // Tambah baru
+  'act.edit':    'edit',               // Edit/ubah
+  'act.hapus':   'trash',             // Hapus
+  'act.lihat':   'eye',               // Lihat detail
+  'act.simpan':  'save',              // Simpan
+  'act.cari':    'search',            // Cari/filter
+  'act.refresh': 'rotate-ccw',        // Refresh/muat ulang (beda dari retur)
+  'act.terima':  'check-circle',      // Terima/approve
+
+  // ── KATEGORI PRODUK (12 items — semua unik) ──
+  'kat.freebase':    'droplet',        // Liquid freebase (tetes)
+  'kat.saltnic':     'flask',          // Saltnic (lab flask)
+  'kat.pod':         'smartphone',     // Pod / AIO (device)
+  'kat.mod':         'zap',            // Mod (power/electric)
+  'kat.accessories': 'tool',           // Aksesoris (wrench)
+  'kat.battery':     'battery',        // Baterai
+  'kat.kapas':       'leaf',           // Kapas (natural)
+  'kat.rda_rta':     'cpu',            // RDA/RTA (chipset)
+  'kat.coil':        'circle',         // Coil (spiral/loop)
+  'kat.occ':         'target',         // OCC (precision)
+  'kat.catridge':    'box',            // Catridge (cartridge container)
+  'kat.default':     'package',        // Default (generic)
+
+  // ── ROLE LABEL (11 items — setiap role punya identitas) ──
+  'role.owner':         'crown',        // Owner (mahkota)
+  'role.manajer':       'shield',       // Manajer (pelindung)
+  'role.manajer_area':  'map',          // Manajer Area (wilayah)
+  'role.head_op':       'settings',     // Head Operational (roda gigi)
+  'role.admin_pusat':   'building',     // Admin Pusat (kantor)
+  'role.spv_area':      'map',          // SPV Area (peta wilayah)
+  'role.finance':       'wallet',       // Finance (dompet)
+  'role.kepala_cabang': 'store',        // Kepala Cabang (toko)
+  'role.sales':         'user-sales',       // Sales (orang + deal)
+  'role.kasir':         'user-kasir',       // Kasir (orang + kartu)
+  'role.kasir_sales':   'user-kasir-sales', // Kasir Sales (orang + register)
+  'role.vaporista':     'user-vaporista',   // Vaporista (orang + service)
+
+  // ── LOG STOK (6 items — arah berbeda) ──
+  'log.masuk':           'arrow-down',       // Stok masuk
+  'log.keluar':          'arrow-up',         // Stok keluar
+  'log.transfer_masuk':  'corner-down-left', // Transfer diterima
+  'log.transfer_keluar': 'corner-up-right',  // Transfer dikirim
+  'log.penjualan':       'shopping-cart',    // Penjualan
+  'log.penyesuaian':     'edit',             // Penyesuaian manual
+
+  // ── LAINNYA (6 items) ──
+  'misc.offline':  'wifi-off',         // Offline
+  'misc.online':   'check-circle',     // Online/connected
+  'misc.warning':  'alert-triangle',   // Peringatan
+  'misc.info':     'info',             // Informasi
+  'misc.lock':     'lock',             // Terkunci/hak akses
+  'misc.key':      'key',              // Password/kunci
+};
+
+// Build SVG HTML string from icon name
+function _svg(name, sz) {
+  const p = _svgP[name];
+  if (!p) return '';
+  const s = sz || '';
+  return `<span class="rv-ico${s?' rv-ico-'+s:''}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg></span>`;
+}
+
+// Ambil icon: return override jika ada, else SVG, else emoji default
 function ico(key) {
   if (ICON_OVERRIDES.hasOwnProperty(key)) return ICON_OVERRIDES[key];
+  const svgName = _icoSvgMap[key];
+  if (svgName) return _svg(svgName);
   for (const grp of ICON_REGISTRY) {
     const item = grp.items.find(i => i.key === key);
     if (item) return item.emoji;
   }
   return '';
+}
+
+// Replace ALL emoji in DOM with SVG icons on load
+function applyDefaultSVGIcons() {
+  // Build map: emoji → SVG HTML
+  const emojiToSvg = {};
+  ICON_REGISTRY.forEach(g => g.items.forEach(i => {
+    if (ICON_OVERRIDES.hasOwnProperty(i.key)) return;
+    const svgName = _icoSvgMap[i.key];
+    if (svgName && i.emoji) emojiToSvg[i.emoji] = _svg(svgName);
+  }));
+  if (!Object.keys(emojiToSvg).length) return;
+
+  // Sort by emoji length desc to match longer emoji first
+  const emojis = Object.keys(emojiToSvg).sort((a,b) => b.length - a.length);
+  const escaped = emojis.map(e => e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const regex = new RegExp(escaped.join('|'), 'g');
+
+  // Walk DOM elements — page headers, tabs, buttons, labels, cards
+  document.querySelectorAll('h2, h3, button, .tab-btn, .page-head-left p, .stat-lbl, .card-head, .empty-icon, .badge').forEach(el => {
+    if (el.innerHTML.match(regex)) {
+      el.innerHTML = el.innerHTML.replace(regex, m => emojiToSvg[m] || m);
+    }
+  });
+
+  // Update JENIS_EMOJI (kategori produk) to SVG — setiap kategori icon unik
+  if (typeof JENIS_EMOJI !== 'undefined') {
+    const katSvg = {'Freebase':'droplet','Saltnic':'flask','Pod / AIO':'smartphone','Mod':'zap',
+      'Accessories':'tool','Battery':'battery','Kapas':'leaf','RDA / RTA':'cpu',
+      'Coil':'circle','OCC':'target','Catridge':'box'};
+    for (const [jenis, svgName] of Object.entries(katSvg)) {
+      if (!ICON_OVERRIDES.hasOwnProperty('kat.'+jenis.toLowerCase().replace(/[\s\/]+/g,'_'))) {
+        JENIS_EMOJI[jenis] = _svg(svgName);
+      }
+    }
+  }
+
+  // Update ROLE_LABEL — setiap role icon SVG unik sesuai identitas
+  if (typeof ROLE_LABEL !== 'undefined') {
+    const roleSvg = {
+      owner:           'crown',      // Mahkota — pemilik bisnis
+      manajer:         'shield',     // Perisai — pelindung operasional
+      manajer_area:    'map',        // Peta — wilayah area
+      head_operational:'settings',   // Gear — operasional teknis
+      admin_pusat:     'building',   // Gedung — kantor pusat
+      spv_area:        'crosshair',  // Crosshair — fokus supervisi
+      finance:         'wallet',     // Dompet — keuangan
+      kepala_cabang:   'store',      // Toko — pimpinan cabang
+      sales:           'user-sales',      // Orang + centang deal
+      kasir:           'user-kasir',      // Orang + kartu pembayaran
+      kasir_sales:     'user-kasir-sales',// Orang + register + sales
+      vaporista:       'user-vaporista',  // Orang + service badge
+    };
+    for (const [role, svgName] of Object.entries(roleSvg)) {
+      if (!ROLE_LABEL[role]) continue;
+      // Ambil teks setelah spasi pertama (buang emoji prefix)
+      const spIdx = ROLE_LABEL[role].indexOf(' ');
+      const textOnly = spIdx >= 0 ? ROLE_LABEL[role].slice(spIdx+1) : role.replace(/_/g,' ');
+      ROLE_LABEL[role] = _svg(svgName) + ' ' + textOnly;
+    }
+  }
 }
 
 // Load icon overrides dari server (dipanggil saat init)
@@ -24215,7 +24632,7 @@ const FOOTER_ICONS = {
 function footerIconSvg(icon, size) {
   size = size || 18;
   var path = FOOTER_ICONS[icon] || FOOTER_ICONS['grid'];
-  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+path+'</svg>';
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+path+'</svg>';
 }
 
 async function footerLoadConfig() {

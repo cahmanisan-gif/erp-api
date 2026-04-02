@@ -57,19 +57,21 @@ router.get('/produk', auth(), async (req, res) => {
     if (q) { where += ' AND (p.nama LIKE ? OR p.sku LIKE ? OR p.barcode LIKE ?)'; params.push('%'+q+'%','%'+q+'%','%'+q+'%'); }
     if (kategori) { where += ' AND p.kategori=?'; params.push(kategori); }
 
-    // Count total
-    const [[{total}]] = await db.query(`SELECT COUNT(*) as total FROM pos_produk p ${where}`, [...params]);
-
     const limit  = parseInt(per_page) || 100;
     const pg     = parseInt(page) || 1;
     const offset = (pg - 1) * limit;
 
-    // cabang_id=0 → total stok semua cabang, else stok cabang tertentu
+    // cabang_id=0 → total stok semua cabang, else stok cabang tertentu (INNER JOIN = hanya produk yg ada di cabang)
     const cabId = parseInt(cabang_id)||0;
     const stokJoin = cabId > 0
-      ? `LEFT JOIN pos_stok s ON s.produk_id=p.id AND s.cabang_id=?`
+      ? `INNER JOIN pos_stok s ON s.produk_id=p.id AND s.cabang_id=?`
       : `LEFT JOIN (SELECT produk_id, SUM(qty) as qty FROM pos_stok GROUP BY produk_id) s ON s.produk_id=p.id`;
     const stokParams = cabId > 0 ? [cabId] : [];
+
+    // Count total — pakai join yang sama supaya akurat
+    const [[{total}]] = cabId > 0
+      ? await db.query(`SELECT COUNT(*) as total FROM pos_produk p INNER JOIN pos_stok s ON s.produk_id=p.id AND s.cabang_id=? ${where}`, [cabId, ...params])
+      : await db.query(`SELECT COUNT(*) as total FROM pos_produk p ${where}`, [...params]);
 
     // Server-side sort
     const allowedSort = {nama:'p.nama', stok:'stok', harga_jual:'p.harga_jual', harga_modal:'p.harga_modal', komisi:'p.komisi', kategori:'p.kategori'};
@@ -162,18 +164,75 @@ router.delete('/produk/:id/foto', auth(['owner','admin_pusat','head_operational'
 });
 
 // DELETE produk (owner only)
+// Dengan ?cabang_id=X → hapus produk dari cabang itu (stok + min stok dihapus, produk hilang dari cabang)
+// Tanpa cabang_id   → hapus master produk + semua stok di semua cabang
 router.delete('/produk/:id', auth(['owner']), async (req, res) => {
   try {
+    const cabang_id = req.query.cabang_id ? parseInt(req.query.cabang_id) : 0;
     const [[p]] = await db.query('SELECT id,nama FROM pos_produk WHERE id=?', [req.params.id]);
     if (!p) return res.status(404).json({success:false,message:'Produk tidak ditemukan.'});
-    // Cek apakah ada transaksi yang menggunakan produk ini
+
+    if (cabang_id > 0) {
+      // Hapus produk dari cabang ini (stok + minimum dihapus → produk hilang dari daftar cabang ini)
+      await db.query('DELETE FROM pos_stok WHERE produk_id=? AND cabang_id=?', [req.params.id, cabang_id]);
+      await db.query('DELETE FROM pos_stok_minimum_cabang WHERE produk_id=? AND cabang_id=?', [req.params.id, cabang_id]);
+      const [[cab]] = await db.query('SELECT nama FROM cabang WHERE id=?', [cabang_id]);
+      audit(req, 'delete', 'produk_cabang', req.params.id, `${p.nama} @ ${cab?.nama||cabang_id}`, {cabang_id});
+      return res.json({success:true, message:`"${p.nama}" dihapus dari ${cab?.nama||'cabang '+cabang_id}.`});
+    }
+
+    // Tanpa cabang → hapus total
     const [[used]] = await db.query('SELECT COUNT(*) as c FROM pos_transaksi_item WHERE produk_id=?', [req.params.id]);
     if (used.c > 0) return res.status(400).json({success:false,message:`Produk "${p.nama}" sudah ada ${used.c} transaksi. Nonaktifkan saja, tidak bisa dihapus.`});
+    await db.query('DELETE FROM pos_paket_item WHERE produk_id=?', [req.params.id]);
+    await db.query('DELETE FROM stock_opname_item WHERE produk_id=?', [req.params.id]);
+    await db.query('DELETE FROM pos_stok_minimum_cabang WHERE produk_id=?', [req.params.id]);
     await db.query('DELETE FROM pos_stok WHERE produk_id=?', [req.params.id]);
     await db.query('DELETE FROM pos_stok_log WHERE produk_id=?', [req.params.id]);
     await db.query('DELETE FROM pos_produk WHERE id=?', [req.params.id]);
     audit(req, 'delete', 'produk', req.params.id, p.nama);
-    res.json({success:true,message:`Produk "${p.nama}" dihapus.`});
+    res.json({success:true,message:`Produk "${p.nama}" dihapus dari semua cabang.`});
+  } catch(e) { res.status(500).json({success:false,message:e.message}); }
+});
+
+// POST bulk delete produk (owner only)
+// Dengan cabang_id → hapus produk dari cabang itu saja
+// Tanpa cabang_id  → hapus master + semua stok
+router.post('/produk/bulk-delete', auth(['owner']), async (req, res) => {
+  try {
+    const { ids, cabang_id } = req.body;
+    if (!ids?.length) return res.status(400).json({success:false,message:'Pilih produk yang akan dihapus.'});
+    const cid = cabang_id ? parseInt(cabang_id) : 0;
+
+    if (cid > 0) {
+      // Hapus produk dari cabang ini saja
+      const ph = ids.map(()=>'?').join(',');
+      const [delResult] = await db.query(`DELETE FROM pos_stok WHERE produk_id IN (${ph}) AND cabang_id=?`, [...ids, cid]);
+      await db.query(`DELETE FROM pos_stok_minimum_cabang WHERE produk_id IN (${ph}) AND cabang_id=?`, [...ids, cid]);
+      const [[cab]] = await db.query('SELECT nama FROM cabang WHERE id=?', [cid]);
+      audit(req, 'delete', 'produk_cabang', null, `Bulk hapus ${ids.length} produk @ ${cab?.nama||cid}`, {ids, cabang_id:cid});
+      return res.json({success:true, message:`${delResult.affectedRows} produk dihapus dari ${cab?.nama||'cabang '+cid}.`, deleted:delResult.affectedRows});
+    }
+
+    // Tanpa cabang → hapus master total
+    const ph = ids.map(()=>'?').join(',');
+    const [used] = await db.query(`SELECT produk_id, COUNT(*) as c FROM pos_transaksi_item WHERE produk_id IN (${ph}) GROUP BY produk_id`, ids);
+    const usedIds = new Set(used.map(u=>u.produk_id));
+    const deletable = ids.filter(id => !usedIds.has(id));
+    const skipped = ids.length - deletable.length;
+    if (deletable.length > 0) {
+      const ph2 = deletable.map(()=>'?').join(',');
+      await db.query(`DELETE FROM pos_paket_item WHERE produk_id IN (${ph2})`, deletable);
+      await db.query(`DELETE FROM stock_opname_item WHERE produk_id IN (${ph2})`, deletable);
+      await db.query(`DELETE FROM pos_stok_minimum_cabang WHERE produk_id IN (${ph2})`, deletable);
+      await db.query(`DELETE FROM pos_stok WHERE produk_id IN (${ph2})`, deletable);
+      await db.query(`DELETE FROM pos_stok_log WHERE produk_id IN (${ph2})`, deletable);
+      await db.query(`DELETE FROM pos_produk WHERE id IN (${ph2})`, deletable);
+      audit(req, 'delete', 'produk', null, `Bulk delete ${deletable.length} produk`, {ids:deletable});
+    }
+    let msg = `${deletable.length} produk dihapus dari semua cabang.`;
+    if (skipped > 0) msg += ` ${skipped} produk dilewati (sudah ada transaksi).`;
+    res.json({success:true, message:msg, deleted:deletable.length, skipped});
   } catch(e) { res.status(500).json({success:false,message:e.message}); }
 });
 
@@ -1172,13 +1231,19 @@ router.post('/produk/import-cabang', auth(['owner']), upload2.single('file'), as
       else if (hl==='stok')      colIdx.stok = i;
     });
 
+    // Ambil kategori yang sudah ada di DB untuk normalisasi case
+    const [existingKats] = await db.query("SELECT DISTINCT kategori FROM pos_produk WHERE kategori IS NOT NULL AND kategori != ''");
+    const katMap = {};
+    existingKats.forEach(r => { katMap[r.kategori.toLowerCase()] = r.kategori; });
+
     let inserted=0, updated=0, skipped=0, stokUpdated=0;
     for (let i=1; i<rawRows.length; i++) {
       const r = rawRows[i];
       if (!r) continue;
       const sku  = String(r[colIdx.sku!=null?colIdx.sku:0]||'').trim();
       const nama = String(r[colIdx.nama!=null?colIdx.nama:1]||'').trim();
-      const kategori   = String(r[colIdx.kategori!=null?colIdx.kategori:2]||'').trim()||null;
+      const katRaw     = String(r[colIdx.kategori!=null?colIdx.kategori:2]||'').trim()||null;
+      const kategori   = katRaw ? (katMap[katRaw.toLowerCase()] || katRaw) : null;
       const harga_jual = parseInt(r[colIdx.harga_jual!=null?colIdx.harga_jual:3])||0;
       const harga_modal= parseInt(r[colIdx.harga_modal!=null?colIdx.harga_modal:4])||0;
       const satuan     = String(r[colIdx.satuan!=null?colIdx.satuan:5]||'pcs').trim();
@@ -1186,6 +1251,8 @@ router.post('/produk/import-cabang', auth(['owner']), upload2.single('file'), as
       const poin       = colIdx.poin!=null ? (parseInt(r[colIdx.poin])||0) : 0;
       const stok       = parseInt(r[colIdx.stok!=null?colIdx.stok:colIdx.poin!=null?8:7])||0;
       if (!sku||!nama) { skipped++; continue; }
+      // Simpan kategori baru ke map supaya row berikutnya konsisten
+      if (kategori && !katMap[kategori.toLowerCase()]) katMap[kategori.toLowerCase()] = kategori;
       try {
         const [[ex]] = await db.query('SELECT id FROM pos_produk WHERE sku=?',[sku]);
         let produkId;
