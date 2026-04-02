@@ -383,9 +383,11 @@ router.post('/transaksi', auth(), async (req, res) => {
 
     // ── Validasi absensi: kasir toko harus clock-in dan belum clock-out ──
     const GUDANG_IDS = [3, 4];
+    const DEBUG_USERS = ['kasirtes']; // bypass absensi untuk debugging
     const _cabTrx = req.body.cabang_id || req.user.cabang_id;
     if (['kasir','kasir_sales','vaporista','kepala_cabang'].includes(req.user.role)
-        && !GUDANG_IDS.includes(_cabTrx) && req.user.personnel_id) {
+        && !GUDANG_IDS.includes(_cabTrx) && req.user.personnel_id
+        && !DEBUG_USERS.includes(req.user.username)) {
       const tgl = new Date().toISOString().slice(0,10);
       const [[absen]] = await conn.query(
         'SELECT status FROM absensi_hari_ini WHERE user_id=? AND tanggal=?',

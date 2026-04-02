@@ -13183,9 +13183,11 @@ async function kasirCekAbsensi() {
   const overlay = document.getElementById('kasir-absensi-block');
   const GUDANG_IDS = [3, 4];
 
-  // Exempt: gudang, owner, admin, manajer
+  // Exempt: gudang, owner, admin, manajer, debug users
+  const DEBUG_USERS = ['kasirtes'];
   if (GUDANG_IDS.includes(USER.cabang_id) ||
-      ['owner','admin_pusat','head_operational','manajer','manajer_area'].includes(USER.role)) {
+      ['owner','admin_pusat','head_operational','manajer','manajer_area'].includes(USER.role) ||
+      DEBUG_USERS.includes(USER.username)) {
     overlay.style.display = 'none';
     return true;
   }
