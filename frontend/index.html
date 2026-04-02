@@ -14093,38 +14093,90 @@ function kasirShowStruk() {
   toast('Transaksi berhasil!','success');
 
   // Auto-print via Bluetooth jika terhubung & auto-print aktif
-  if (BT_CONNECTED && btGetAutoPrint()) {
-    btPrintReceipt(r).then(ok => {
-      if (ok) toast('Struk tercetak via Bluetooth!','success');
-    }).catch(e => {
-      console.error('Auto BT print error:', e);
-      toast('Gagal cetak otomatis: ' + e.message, 'error');
-    });
+  if (btGetAutoPrint()) {
+    // APK mode: native bridge
+    if (window.RajaVaporPrinter && RajaVaporPrinter.isAvailable() && RajaVaporPrinter.isConnected()) {
+      var apOk = RajaVaporPrinter.printReceipt({
+        id: r.id,
+        tanggal: new Date().toLocaleString('id-ID'),
+        kasir: USER.nama_lengkap || USER.username,
+        cabang: USER.nama_cabang || '—',
+        metode_bayar: r.metode || KASIR_METODE || 'cash',
+        catatan: '',
+        items: (r.items||[]).map(function(k) {
+          return { nama: k.nama_produk||'', qty: k.qty, harga: k.harga_jual, subtotal: k.harga_jual*k.qty };
+        }),
+        subtotal: r.sub, diskon: r.dis||0, total: r.tot,
+        bayar: r.bayar, kembalian: Math.max(0,r.kembalian||0)
+      });
+      if (apOk) toast('Struk tercetak via Bluetooth!','success');
+    }
+    // Web Bluetooth
+    else if (BT_CONNECTED && BT_CHAR) {
+      btPrintReceipt(r).then(ok => {
+        if (ok) toast('Struk tercetak via Bluetooth!','success');
+      }).catch(e => {
+        console.error('Auto BT print error:', e);
+        toast('Gagal cetak otomatis: ' + e.message, 'error');
+      });
+    }
   }
 }
 
 function strukDoPrint() {
-  // Jika Bluetooth terhubung, cetak via ESC/POS
-  if (BT_CONNECTED && KASIR_LAST_TRX) {
-    btPrintReceipt(KASIR_LAST_TRX).then(ok => {
+  const r = KASIR_LAST_TRX;
+  if (!r) return;
+
+  // ═══ 1. APK MODE: pakai native bridge (paling reliable) ═══
+  if (window.RajaVaporPrinter && RajaVaporPrinter.isAvailable()) {
+    if (RajaVaporPrinter.isConnected()) {
+      var ok = RajaVaporPrinter.printReceipt({
+        id: r.id,
+        tanggal: new Date().toLocaleString('id-ID'),
+        kasir: USER.nama_lengkap || USER.username,
+        cabang: USER.nama_cabang || '—',
+        metode_bayar: r.metode || KASIR_METODE || 'cash',
+        catatan: '',
+        items: (r.items||[]).map(function(k) {
+          return { nama: k.nama_produk||'', qty: k.qty, harga: k.harga_jual, subtotal: k.harga_jual*k.qty };
+        }),
+        subtotal: r.sub,
+        diskon: r.dis || 0,
+        total: r.tot,
+        bayar: r.bayar,
+        kembalian: Math.max(0, r.kembalian||0)
+      });
       if (ok) toast('Struk tercetak via Bluetooth!', 'success');
-      else {
-        // BT gagal, fallback ke native print
-        toast('Bluetooth gagal, membuka print dialog…', 'warn');
-        setTimeout(() => {
-          document.body.classList.add('printing-struk');
-          setTimeout(() => { window.print(); document.body.classList.remove('printing-struk'); }, 100);
-        }, 500);
-      }
+      else toast('Gagal cetak. Cek printer.', 'error');
+    } else {
+      // Printer belum connect — tawarkan connect
+      toast('Printer belum terhubung. Hubungkan dulu di Setting POS.', 'warn');
+    }
+    return;
+  }
+
+  // ═══ 2. WEB BLUETOOTH (BLE): pakai btPrintReceipt ═══
+  if (BT_CONNECTED && BT_CHAR && r) {
+    btPrintReceipt(r).then(ok => {
+      if (ok) toast('Struk tercetak via Bluetooth!', 'success');
+      else strukFallbackPrint();
     }).catch(e => {
       console.error('strukDoPrint BT error:', e);
-      toast('Bluetooth error, membuka print dialog…', 'warn');
-      document.body.classList.add('printing-struk');
-      setTimeout(() => { window.print(); document.body.classList.remove('printing-struk'); }, 100);
+      strukFallbackPrint();
     });
     return;
   }
-  // Fallback: native print dialog — delay lebih lama agar logo sempat load
+
+  // ═══ 3. FALLBACK: native print dialog (desktop browser) ═══
+  strukFallbackPrint();
+}
+
+function strukFallbackPrint() {
+  // window.print() tidak bekerja di WebView Android — skip jika di APK
+  if (window.RajaVaporPrinter && RajaVaporPrinter.isAvailable()) {
+    toast('Hubungkan printer Bluetooth untuk cetak struk.', 'warn');
+    return;
+  }
   document.body.classList.add('printing-struk');
   const strukImg = document.querySelector('#struk-paper-content img');
   if (strukImg && !strukImg.complete) {
@@ -16476,7 +16528,7 @@ async function btSendData(data) {
   if (!BT_CHAR || !BT_CONNECTED) throw new Error('Printer tidak terhubung');
 
   // Re-check connection — BLE bisa diam-diam putus
-  if (BT_DEVICE && !BT_DEVICE.gatt.connected) {
+  if (BT_DEVICE && BT_DEVICE.gatt && !BT_DEVICE.gatt.connected) {
     BT_CONNECTED = false; BT_CHAR = null;
     btUpdateUI();
     throw new Error('Printer terputus. Hubungkan ulang.');
@@ -16524,7 +16576,32 @@ async function btSendData(data) {
 
 // Print receipt via Bluetooth
 async function btPrintReceipt(trxData) {
-  if (!BT_CONNECTED) {
+  // Jangan pakai fungsi ini di APK mode — gunakan RajaVaporPrinter.printReceipt() langsung
+  if (window.RajaVaporPrinter && RajaVaporPrinter.isAvailable()) {
+    // Redirect ke native bridge
+    try {
+      var ok = RajaVaporPrinter.printReceipt({
+        id: trxData.id,
+        tanggal: new Date().toLocaleString('id-ID'),
+        kasir: USER.nama_lengkap || USER.username,
+        cabang: USER.nama_cabang || '—',
+        metode_bayar: trxData.metode || KASIR_METODE || 'cash',
+        catatan: '',
+        items: (trxData.items||[]).map(function(k) {
+          return { nama: k.nama_produk||'', qty: k.qty, harga: k.harga_jual, subtotal: k.harga_jual*k.qty };
+        }),
+        subtotal: trxData.sub, diskon: trxData.dis||0, total: trxData.tot,
+        bayar: trxData.bayar, kembalian: Math.max(0,trxData.kembalian||0)
+      });
+      return ok;
+    } catch(ne) {
+      console.error('Native print error:', ne);
+      return false;
+    }
+  }
+
+  // Web Bluetooth mode — butuh BT_CHAR
+  if (!BT_CONNECTED || !BT_CHAR) {
     toast('Printer Bluetooth tidak terhubung.', 'error');
     return false;
   }
@@ -16535,22 +16612,19 @@ async function btPrintReceipt(trxData) {
     const showLogo = (_sb.struk_show_logo === '1' || _sb.struk_show_logo === 1) && _logo;
 
     if (showLogo) {
-      // Cetak logo dulu sebagai bitmap
       const logoUrl = _logo.startsWith('http') ? _logo : (location.origin + _logo);
       const logoData = await escImageFromUrl(logoUrl, btGetPaperWidth() > 32 ? 200 : 150);
       if (logoData) {
-        // Init + center + logo + line feed
         await btSendData(escConcat(escInit(), escCenter(), logoData, escLF()));
       }
     }
 
-    // Cetak teks receipt
     const data = btBuildReceipt(trxData);
     await btSendData(data);
     return true;
   } catch(e) {
     console.error('btPrintReceipt:', e);
-    if (BT_DEVICE && !BT_DEVICE.gatt.connected) {
+    if (BT_DEVICE && BT_DEVICE.gatt && !BT_DEVICE.gatt.connected) {
       BT_CONNECTED = false; BT_CHAR = null;
       btUpdateUI();
       toast('Printer terputus. Hubungkan ulang dan coba cetak lagi.', 'error');
