@@ -8419,10 +8419,15 @@ async function loadDashboard() {
         ? reqs.data.map(r=>`<tr style="cursor:pointer" onclick="navTo('pg-request')" title="Klik untuk ke halaman Request"><td><b>${r.nama_barang}</b></td><td>${r.nama_cabang||'—'}</td><td>${badgeStatus(r.status)}</td></tr>`).join('')
         : '<tr><td colspan="3"><div class="empty"><p>Tidak ada request</p></div></td></tr>';
     }
-    // Reminder sewa
-    if (['owner','manajer','head_operational','admin_pusat'].includes(USER.role)) {
-      try {
-        const sewa = await api('/sewa/reminder');
+    // ── Alerts: sewa + aset + stok — load in parallel, non-blocking ──
+    if (['owner','manajer','head_operational','admin_pusat','manajer_area'].includes(USER.role)) {
+      // Fire all 3 in parallel — don't await in sequence
+      Promise.all([
+        api('/sewa/reminder').catch(()=>({data:[]})),
+        api('/aset/reminder').catch(()=>({data:[]})),
+        api('/pos/stok/alert').catch(()=>({summary:{},data:[]})),
+      ]).then(([sewa, aset, stokAlert]) => {
+        // Sewa
         const list = sewa.data || [];
         if (list.length) {
           document.getElementById('dash-sewa-wrap').style.display = 'block';
@@ -8436,26 +8441,20 @@ async function loadDashboard() {
               <span style="background:${bg};color:${color};border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700;white-space:nowrap">${hari <= 0 ? '⚠️ Sudah lewat!' : hari + ' hari lagi'}</span>
             </div>`;
           }).join('');
-        } else {
-          document.getElementById('dash-sewa-wrap').style.display = 'none';
-        }
-      } catch(e) { }
-    }
-    // Reminder aset
-    if (['owner','manajer','head_operational','admin_pusat'].includes(USER.role)) {
-      try {
-        const aset = await api('/aset/reminder');
+        } else { document.getElementById('dash-sewa-wrap').style.display = 'none'; }
+
+        // Aset
         const aList = aset.data || [];
         if (aList.length) {
-          const existWrap = document.getElementById('dash-aset-wrap');
+          let existWrap = document.getElementById('dash-aset-wrap');
           if (!existWrap) {
             const sewaWrap = document.getElementById('dash-sewa-wrap');
-            const asetDiv = document.createElement('div');
-            asetDiv.id = 'dash-aset-wrap'; asetDiv.style.marginBottom = '20px';
-            sewaWrap.parentNode.insertBefore(asetDiv, sewaWrap.nextSibling);
+            existWrap = document.createElement('div');
+            existWrap.id = 'dash-aset-wrap'; existWrap.style.marginBottom = '20px';
+            sewaWrap.parentNode.insertBefore(existWrap, sewaWrap.nextSibling);
           }
           const kondisiLabel = { perlu_perawatan:'🔧 Perlu Perawatan', rusak_sebagian:'⚠️ Rusak Sebagian', rusak_total:'❌ Rusak Total' };
-          document.getElementById('dash-aset-wrap').innerHTML = `
+          existWrap.innerHTML = `
             <div class="card">
               <div class="card-head"><h3>🏭 Perhatian Aset</h3><span style="background:#E65100;color:#fff;border-radius:99px;padding:2px 10px;font-size:12px;font-weight:700">${aList.length} item</span></div>
               <div style="padding:0 16px 12px">
@@ -8470,12 +8469,8 @@ async function loadDashboard() {
               </div>
             </div>`;
         }
-      } catch(e) { }
-    }
-    // Alert stok menipis
-    if (['owner','manajer','head_operational','admin_pusat','manajer_area'].includes(USER.role)) {
-      try {
-        const stokAlert = await api('/pos/stok/alert');
+
+        // Stok menipis
         const sa = stokAlert.summary || {};
         if (sa.total_menipis > 0) {
           let alertDiv = document.getElementById('dash-stok-alert');
@@ -8506,7 +8501,7 @@ async function loadDashboard() {
               </div>
             </div>`;
         }
-      } catch(e) { }
+      }).catch(()=>{}); // alerts non-critical
     }
   } catch(e) { console.error(e); }
 }
@@ -8514,71 +8509,61 @@ async function loadDashboard() {
 async function loadDashboardKasir() {
   const cabangId = USER.cabang_id;
   const tgl = new Date().toISOString().slice(0,10);
+  const now = new Date();
+  const bulanDari = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-01';
 
-  // Omzet hari ini dari POS transaksi
-  try {
-    const res = await api(`/pos/laporan/penjualan?cabang_id=${cabangId}&dari=${tgl}&sampai=${tgl}`);
-    const d = res.data || {};
-    document.getElementById('ds-omzet-today').textContent = rp(d.total_omzet||0);
-  } catch(e) { document.getElementById('ds-omzet-today').textContent = 'Rp 0'; }
+  // ═══ ALL 4 API CALLS IN PARALLEL ═══
+  const [resPenjualan, resKomisi, resRekap, resRequest] = await Promise.all([
+    api(`/pos/laporan/penjualan?cabang_id=${cabangId}&dari=${tgl}&sampai=${tgl}`).catch(()=>({data:{}})),
+    api(`/pos/laporan/komisi?cabang_id=${cabangId}&dari=${tgl}&sampai=${tgl}`).catch(()=>({data:[]})),
+    api(`/staff/rekap/saya?dari=${bulanDari}&sampai=${tgl}`).catch(()=>({data:{}})),
+    api('/request?cabang_id='+cabangId).catch(()=>({data:[]})),
+  ]);
+
+  // Omzet hari ini
+  document.getElementById('ds-omzet-today').textContent = rp((resPenjualan.data||{}).total_omzet||0);
 
   // Komisi hari ini
-  try {
-    const res = await api(`/pos/laporan/komisi?cabang_id=${cabangId}&dari=${tgl}&sampai=${tgl}`);
-    const total = (res.data||[]).reduce((s,r)=>s+parseInt(r.total_komisi||0),0);
-    document.getElementById('ds-komisi-today').textContent = rp(total);
-  } catch(e) { document.getElementById('ds-komisi-today').textContent = 'Rp 0'; }
+  const totalKomisi = (resKomisi.data||[]).reduce((s,r)=>s+parseInt(r.total_komisi||0),0);
+  document.getElementById('ds-komisi-today').textContent = rp(totalKomisi);
 
   // Rekap pribadi bulan ini
-  try {
-    const now = new Date();
-    const bulanDari = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-01';
-    const bulanSampai = now.toISOString().slice(0,10);
-    const resRekap = await api(`/staff/rekap/saya?dari=${bulanDari}&sampai=${bulanSampai}`);
-    const rk = resRekap.data || {};
-    const rekapDiv = document.getElementById('dash-rekap-pribadi');
-    rekapDiv.style.display = '';
-    document.getElementById('ds-my-omzet').textContent = rp(parseFloat(rk.omzet_total||0));
-    document.getElementById('ds-my-komisi').textContent = rp(parseFloat(rk.total_komisi||0));
-    document.getElementById('ds-my-poin').textContent = (parseInt(rk.total_poin||0)).toLocaleString('id-ID');
-    document.getElementById('ds-my-trx').textContent = (parseInt(rk.total_trx||0)).toLocaleString('id-ID');
-    // Target
-    if (rk.target_omzet > 0) {
-      document.getElementById('ds-my-target-wrap').style.display = '';
-      const pct = rk.persen_target || 0;
-      document.getElementById('ds-my-target-bar').style.width = Math.min(pct,100)+'%';
-      document.getElementById('ds-my-target-bar').style.background = pct >= 100 ? 'var(--green)' : pct >= 70 ? '#D97706' : 'var(--brand)';
-      document.getElementById('ds-my-target-pct').textContent = pct+'%';
-      document.getElementById('ds-my-target-pct').style.color = pct >= 100 ? 'var(--green)' : pct >= 70 ? '#D97706' : 'var(--brand)';
-      document.getElementById('ds-my-target-label').textContent = rp(parseFloat(rk.omzet_total||0))+' / '+rp(rk.target_omzet);
-    }
-  } catch(e) { console.error('rekap pribadi:', e); }
-
-  // Status request barang toko ini
-  try {
-    const res = await api('/request?cabang_id='+cabangId);
-    const rows = res.data || [];
-    const statusColor = {'Sedang Dicarikan':'#D97706','Disetujui':'#2563EB','Sudah di Gudang':'#7C3AED','Dikirim':'#059669','Ditolak':'#DC2626'};
-    const statusIcon  = {'Sedang Dicarikan':'⏳','Disetujui':'✅','Sudah di Gudang':'📦','Dikirim':'🚚','Ditolak':'❌'};
-    const wrap = document.getElementById('dash-req-kasir-wrap');
-    if (!rows.length) {
-      wrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">Belum ada request barang</div>';
-      return;
-    }
-    wrap.innerHTML = rows.slice(0,10).map(r=>`
-      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="navTo('pg-request')">
-        <div style="font-size:20px">${statusIcon[r.status]||'📋'}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.nama_barang}</div>
-          <div style="font-size:11px;color:var(--muted)">${r.qty} pcs · ${new Date(r.created_at).toLocaleDateString('id-ID')}</div>
-        </div>
-        <div>
-          <span style="background:${statusColor[r.status]||'#888'}22;color:${statusColor[r.status]||'#888'};border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap">${r.status}</span>
-        </div>
-      </div>`).join('');
-  } catch(e) {
-    document.getElementById('dash-req-kasir-wrap').innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">Gagal memuat data</div>';
+  const rk = resRekap.data || {};
+  document.getElementById('dash-rekap-pribadi').style.display = '';
+  document.getElementById('ds-my-omzet').textContent = rp(parseFloat(rk.omzet_total||0));
+  document.getElementById('ds-my-komisi').textContent = rp(parseFloat(rk.total_komisi||0));
+  document.getElementById('ds-my-poin').textContent = (parseInt(rk.total_poin||0)).toLocaleString('id-ID');
+  document.getElementById('ds-my-trx').textContent = (parseInt(rk.total_trx||0)).toLocaleString('id-ID');
+  if (rk.target_omzet > 0) {
+    document.getElementById('ds-my-target-wrap').style.display = '';
+    const pct = rk.persen_target || 0;
+    document.getElementById('ds-my-target-bar').style.width = Math.min(pct,100)+'%';
+    document.getElementById('ds-my-target-bar').style.background = pct >= 100 ? 'var(--green)' : pct >= 70 ? '#D97706' : 'var(--brand)';
+    document.getElementById('ds-my-target-pct').textContent = pct+'%';
+    document.getElementById('ds-my-target-pct').style.color = pct >= 100 ? 'var(--green)' : pct >= 70 ? '#D97706' : 'var(--brand)';
+    document.getElementById('ds-my-target-label').textContent = rp(parseFloat(rk.omzet_total||0))+' / '+rp(rk.target_omzet);
   }
+
+  // Status request barang
+  const rows = resRequest.data || [];
+  const statusColor = {'Sedang Dicarikan':'#D97706','Disetujui':'#2563EB','Sudah di Gudang':'#7C3AED','Dikirim':'#059669','Ditolak':'#DC2626'};
+  const statusIcon  = {'Sedang Dicarikan':'⏳','Disetujui':'✅','Sudah di Gudang':'📦','Dikirim':'🚚','Ditolak':'❌'};
+  const wrap = document.getElementById('dash-req-kasir-wrap');
+  if (!rows.length) {
+    wrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">Belum ada request barang</div>';
+    return;
+  }
+  wrap.innerHTML = rows.slice(0,10).map(r=>`
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="navTo('pg-request')">
+      <div style="font-size:20px">${statusIcon[r.status]||'📋'}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.nama_barang}</div>
+        <div style="font-size:11px;color:var(--muted)">${r.qty} pcs · ${new Date(r.created_at).toLocaleDateString('id-ID')}</div>
+      </div>
+      <div>
+        <span style="background:${statusColor[r.status]||'#888'}22;color:${statusColor[r.status]||'#888'};border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap">${r.status}</span>
+      </div>
+    </div>`).join('');
 }
 
 let SEWA_DATA = [];
