@@ -3,6 +3,7 @@ const router  = express.Router();
 const db      = require('../config/database');
 const auth    = require('../middleware/auth');
 const { audit } = require('../middleware/auditLog');
+const { requireModule } = require('../middleware/moduleAccess');
 const rp_plain = v => 'Rp '+(v||0).toLocaleString('id-ID');
 const multer  = require('multer');
 const path    = require('path');
@@ -54,7 +55,13 @@ router.get('/produk', auth(), async (req, res) => {
     const params = [];
     if (aktif !== undefined && aktif !== '') { where += ' AND p.aktif=?'; params.push(parseInt(aktif)); }
     else { where += ' AND p.aktif=1'; }
-    if (q) { where += ' AND (p.nama LIKE ? OR p.sku LIKE ? OR p.barcode LIKE ?)'; params.push('%'+q+'%','%'+q+'%','%'+q+'%'); }
+    if (q) {
+      const words = q.trim().split(/\s+/).filter(w => w);
+      for (const w of words) {
+        where += ' AND (p.nama LIKE ? OR p.sku LIKE ? OR p.barcode LIKE ?)';
+        params.push('%'+w+'%','%'+w+'%','%'+w+'%');
+      }
+    }
     if (kategori) { where += ' AND p.kategori=?'; params.push(kategori); }
 
     const limit  = parseInt(per_page) || 100;
@@ -364,28 +371,36 @@ router.patch('/stok', auth(['owner','admin_pusat','head_operational','manajer'])
 
 // POST /api/pos/stok/transfer - transfer stok gudang ke toko
 router.post('/stok/transfer', auth(['owner','admin_pusat','head_operational','manajer']), async (req, res) => {
+  const conn = await db.getConnection();
   try {
+    await conn.beginTransaction();
     const { dari_cabang_id, ke_cabang_id, items } = req.body;
-    const [[dariCab]] = await db.query('SELECT nama FROM cabang WHERE id=?', [dari_cabang_id]);
-    const [[keCab]]   = await db.query('SELECT nama FROM cabang WHERE id=?', [ke_cabang_id]);
+    if (!items?.length) return res.status(400).json({success:false,message:'Items kosong.'});
+    const [[dariCab]] = await conn.query('SELECT nama FROM cabang WHERE id=?', [dari_cabang_id]);
+    const [[keCab]]   = await conn.query('SELECT nama FROM cabang WHERE id=?', [ke_cabang_id]);
     const dariNama = dariCab?.nama || ('Cabang #'+dari_cabang_id);
     const keNama   = keCab?.nama   || ('Cabang #'+ke_cabang_id);
     // items: [{produk_id, qty}]
     for (const item of items) {
       // Kurangi stok asal
-      await db.query(`INSERT INTO pos_stok_log (produk_id,cabang_id,tipe,qty,keterangan,user_id) VALUES (?,?,'transfer_keluar',?,?,?)`, [item.produk_id, dari_cabang_id, item.qty, 'Transfer ke '+keNama, req.user.id]).catch(()=>{});
-      await db.query(`INSERT INTO pos_stok (produk_id,cabang_id,qty) VALUES (?,?,0)
+      await conn.query(`INSERT INTO pos_stok (produk_id,cabang_id,qty) VALUES (?,?,0)
         ON DUPLICATE KEY UPDATE qty=GREATEST(0,qty-?)`,
         [item.produk_id, dari_cabang_id, item.qty]);
       // Tambah stok tujuan
-      await db.query(`INSERT INTO pos_stok_log (produk_id,cabang_id,tipe,qty,keterangan,user_id) VALUES (?,?,'transfer_masuk',?,?,?)`, [item.produk_id, ke_cabang_id, item.qty, 'Transfer dari '+dariNama, req.user.id]).catch(()=>{});
-      await db.query(`INSERT INTO pos_stok (produk_id,cabang_id,qty) VALUES (?,?,?)
+      await conn.query(`INSERT INTO pos_stok (produk_id,cabang_id,qty) VALUES (?,?,?)
         ON DUPLICATE KEY UPDATE qty=qty+?`,
         [item.produk_id, ke_cabang_id, item.qty, item.qty]);
+      // Log stok (non-critical)
+      await conn.query(`INSERT INTO pos_stok_log (produk_id,cabang_id,tipe,qty,keterangan,user_id) VALUES (?,?,'transfer_keluar',?,?,?)`,
+        [item.produk_id, dari_cabang_id, item.qty, 'Transfer ke '+keNama, req.user.id]).catch(()=>{});
+      await conn.query(`INSERT INTO pos_stok_log (produk_id,cabang_id,tipe,qty,keterangan,user_id) VALUES (?,?,'transfer_masuk',?,?,?)`,
+        [item.produk_id, ke_cabang_id, item.qty, 'Transfer dari '+dariNama, req.user.id]).catch(()=>{});
     }
+    await conn.commit();
     audit(req, 'create', 'transfer_stok', null, `${dariNama} → ${keNama}`, {items_count:items.length});
     res.json({success:true,message:`Transfer ${items.length} produk berhasil.`});
-  } catch(e) { res.status(500).json({success:false,message:e.message}); }
+  } catch(e) { await conn.rollback(); res.status(500).json({success:false,message:e.message}); }
+  finally { conn.release(); }
 });
 
 // ── SHIFT ──────────────────────────────
@@ -557,6 +572,74 @@ router.post('/transaksi', auth(), async (req, res) => {
     await conn.rollback();
     res.status(500).json({success:false,message:e.message});
   } finally { conn.release(); }
+});
+
+// GET /api/pos/history — history transaksi lengkap dengan filter, pagination, summary
+router.get('/history', auth(), async (req, res) => {
+  try {
+    const { getCabangAkses } = require('../middleware/cabangFilter');
+    const { dari, sampai, cabang_id, kasir_id, metode, q, page, per_page } = req.query;
+
+    let where = 'WHERE t.status="selesai"';
+    const params = [];
+
+    // Date range
+    if (dari) { where += ' AND t.created_at >= ?'; params.push(dari + ' 00:00:00'); }
+    if (sampai) { where += ' AND t.created_at <= ?'; params.push(sampai + ' 23:59:59'); }
+
+    // Cabang filter — akses control
+    if (cabang_id) {
+      where += ' AND t.cabang_id=?'; params.push(parseInt(cabang_id));
+    } else {
+      const akses = await getCabangAkses(req.user);
+      if (akses !== null && akses.length > 0) {
+        where += ` AND t.cabang_id IN (${akses.map(()=>'?').join(',')})`;
+        params.push(...akses);
+      } else if (akses !== null && akses.length === 0) {
+        return res.json({ success:true, data:[], summary:{}, total:0 });
+      }
+    }
+
+    // Kasir filter
+    if (kasir_id) { where += ' AND t.kasir_id=?'; params.push(parseInt(kasir_id)); }
+
+    // Metode bayar filter
+    if (metode) { where += ' AND t.metode_bayar=?'; params.push(metode); }
+
+    // Search by trx ID
+    if (q) { where += ' AND t.id LIKE ?'; params.push('%' + q + '%'); }
+
+    // Summary
+    const [[summary]] = await db.query(`
+      SELECT COUNT(*) as total_trx,
+        COALESCE(SUM(t.subtotal),0) as total_bruto,
+        COALESCE(SUM(t.diskon),0) as total_diskon,
+        COALESCE(SUM(t.total),0) as total_omzet,
+        COALESCE(SUM(CASE WHEN t.metode_bayar='cash' THEN t.total ELSE 0 END),0) as total_cash,
+        COALESCE(SUM(CASE WHEN t.metode_bayar='transfer' THEN t.total ELSE 0 END),0) as total_transfer,
+        COALESCE(SUM(CASE WHEN t.metode_bayar='qris' THEN t.total ELSE 0 END),0) as total_qris,
+        COALESCE(SUM(CASE WHEN t.metode_bayar='split' THEN t.total ELSE 0 END),0) as total_split
+      FROM pos_transaksi t ${where}`, params);
+
+    // Pagination
+    const lmt = Math.min(parseInt(per_page) || 50, 200);
+    const pg = parseInt(page) || 1;
+    const offset = (pg - 1) * lmt;
+    const total = parseInt(summary.total_trx);
+
+    // Fetch rows
+    const [rows] = await db.query(`
+      SELECT t.*, c.nama as nama_cabang, c.kode as kode_cabang, u.nama_lengkap as nama_kasir
+      FROM pos_transaksi t
+      LEFT JOIN cabang c ON c.id=t.cabang_id
+      LEFT JOIN users u ON u.id=t.kasir_id
+      ${where} ORDER BY t.created_at DESC LIMIT ? OFFSET ?`, [...params, lmt, offset]);
+
+    res.json({
+      success: true, data: rows, summary,
+      total, page: pg, per_page: lmt, total_pages: Math.ceil(total / lmt)
+    });
+  } catch(e) { res.status(500).json({ success:false, message:e.message }); }
 });
 
 // GET /api/pos/transaksi?cabang_id=&tgl=
@@ -823,6 +906,12 @@ router.post('/produk/import', auth(['owner','admin_pusat','head_operational']), 
           const [ins] = await db.query(`INSERT INTO pos_produk (sku,nama,kategori,harga_jual,harga_modal,satuan,komisi,komisi_poin,aktif,stok_minimum) VALUES (?,?,?,?,?,?,?,?,?,?)`,
             [sku,nama,kategori,harga_jual,harga_modal,satuan,komisi,poin,aktif,stokMin||0]);
           produkId = ins.insertId; inserted++;
+          // Auto-init pos_stok qty=0 di semua cabang aktif (sama seperti tambah produk satuan)
+          if (cabangList.length) {
+            const ph = cabangList.map(() => '(?,?,0)').join(',');
+            const vals = cabangList.flatMap(c => [produkId, c.id]);
+            await db.query(`INSERT IGNORE INTO pos_stok (produk_id, cabang_id, qty) VALUES ${ph}`, vals);
+          }
         }
         // Update stok per cabang jika ada kolom Stok_NAMA (multi-cabang)
         for (const sc of stokCols) {
@@ -917,6 +1006,13 @@ router.get('/stok/cari', auth(), async (req, res) => {
   try {
     const { q, cabang_id } = req.query;
     if (!q) return res.status(400).json({success:false,message:'Query wajib.'});
+    const words = q.trim().split(/\s+/).filter(w => w);
+    let smartWhere = '';
+    const smartParams = [];
+    for (const w of words) {
+      smartWhere += ' AND (p.nama LIKE ? OR p.sku LIKE ?)';
+      smartParams.push('%'+w+'%','%'+w+'%');
+    }
     const [rows] = await db.query(`
       SELECT p.id, p.sku, p.nama, p.kategori, p.harga_jual, p.satuan,
              c.id as cabang_id, c.nama as nama_cabang, c.kode,
@@ -924,8 +1020,8 @@ router.get('/stok/cari', auth(), async (req, res) => {
       FROM pos_produk p
       JOIN pos_stok s ON s.produk_id=p.id AND s.qty>0
       JOIN cabang c ON c.id=s.cabang_id
-      WHERE p.aktif=1 AND (p.nama LIKE ? OR p.sku LIKE ?)
-      ORDER BY s.qty DESC`, ['%'+q+'%','%'+q+'%']);
+      WHERE p.aktif=1${smartWhere}
+      ORDER BY s.qty DESC`, smartParams);
 
     // Jika ada cabang_id, tandai cabang terdekat berdasarkan urutan kode
     // (Cabang dengan kode numerik terdekat dianggap terdekat secara geografis)
@@ -1018,7 +1114,7 @@ router.get('/laporan/komisi', auth(), async (req, res) => {
 });
 
 // GET /api/pos/laporan/per-kasir — omzet split per kasir/sales
-router.get('/laporan/per-kasir', auth(), async (req, res) => {
+router.get('/laporan/per-kasir', auth(), requireModule('lap_per_kasir'), async (req, res) => {
   try {
     const { cabang_id, dari, sampai } = req.query;
     if (!dari || !sampai) return res.status(400).json({success:false,message:'dari & sampai wajib.'});
@@ -1075,6 +1171,27 @@ router.get('/laporan/per-kasir', auth(), async (req, res) => {
       GROUP BY t.kasir_id
     `, params);
 
+    // ── Invoice sales (diterbitkan/lunas) per sales_id ──
+    let invWhere = "i.status IN ('diterbitkan','lunas') AND i.tanggal BETWEEN ? AND ?";
+    const invParams = [dari, sampai];
+    if (cabang_id) { invWhere += ' AND COALESCE(u2.cabang_id,3)=?'; invParams.push(cabang_id); }
+
+    const [invoicePerSales] = await db.query(`
+      SELECT i.sales_id,
+             u2.nama_lengkap as nama_sales,
+             u2.role as sales_role,
+             COALESCE(c2.nama,'GUDANG SALES') as nama_cabang,
+             COALESCE(c2.kode,'GUDANG-S') as kode_cabang,
+             COUNT(*) as inv_count,
+             COALESCE(SUM(i.total),0) as inv_total
+      FROM invoice i
+      JOIN users u2 ON u2.id = i.sales_id
+      LEFT JOIN cabang c2 ON c2.id = u2.cabang_id
+      WHERE ${invWhere}
+      GROUP BY i.sales_id, u2.nama_lengkap, u2.role, c2.nama, c2.kode
+      ORDER BY inv_total DESC
+    `, invParams);
+
     // Gabungkan komisi ke perKasir
     const komisiMap = {};
     komisiPerKasir.forEach(k => { komisiMap[k.kasir_id] = k; });
@@ -1084,6 +1201,10 @@ router.get('/laporan/per-kasir', auth(), async (req, res) => {
       if (!harianMap[h.kasir_id]) harianMap[h.kasir_id] = [];
       harianMap[h.kasir_id].push(h);
     });
+
+    // Build invoice map by sales_id
+    const invoiceMap = {};
+    invoicePerSales.forEach(iv => { invoiceMap[iv.sales_id] = iv; });
 
     // Konversi semua angka dari string MySQL ke number
     const result = perKasir.map(k => ({
@@ -1099,6 +1220,8 @@ router.get('/laporan/per-kasir', auth(), async (req, res) => {
       omzet_cash: parseInt(k.omzet_cash)||0,
       omzet_transfer: parseInt(k.omzet_transfer)||0,
       omzet_qris: parseInt(k.omzet_qris)||0,
+      omzet_invoice: parseInt(invoiceMap[k.kasir_id]?.inv_total)||0,
+      inv_count: parseInt(invoiceMap[k.kasir_id]?.inv_count)||0,
       total_komisi: parseInt(komisiMap[k.kasir_id]?.total_komisi)||0,
       total_poin: parseInt(komisiMap[k.kasir_id]?.total_poin)||0,
       total_item: parseInt(komisiMap[k.kasir_id]?.total_item)||0,
@@ -1110,6 +1233,35 @@ router.get('/laporan/per-kasir', auth(), async (req, res) => {
       }))
     }));
 
+    // Tambahkan sales yang HANYA punya invoice (tidak ada POS transaksi)
+    invoicePerSales.forEach(iv => {
+      if (!result.find(r => r.kasir_id === iv.sales_id)) {
+        result.push({
+          kasir_id: iv.sales_id,
+          nama_kasir: iv.nama_sales,
+          role: iv.sales_role,
+          nama_cabang: iv.nama_cabang,
+          kode_cabang: iv.kode_cabang,
+          total_transaksi: 0,
+          total_omzet: 0,
+          total_diskon: 0,
+          omzet_bersih: 0,
+          omzet_cash: 0,
+          omzet_transfer: 0,
+          omzet_qris: 0,
+          omzet_invoice: parseInt(iv.inv_total)||0,
+          inv_count: parseInt(iv.inv_count)||0,
+          total_komisi: 0,
+          total_poin: 0,
+          total_item: 0,
+          harian: []
+        });
+      }
+    });
+
+    // Re-sort by total combined omzet (POS + invoice)
+    result.sort((a,b) => (b.total_omzet + b.omzet_invoice) - (a.total_omzet + a.omzet_invoice));
+
     // Grand total
     const grandTotal = {
       total_transaksi: result.reduce((s,k) => s + k.total_transaksi, 0),
@@ -1119,6 +1271,7 @@ router.get('/laporan/per-kasir', auth(), async (req, res) => {
       omzet_cash: result.reduce((s,k) => s + k.omzet_cash, 0),
       omzet_transfer: result.reduce((s,k) => s + k.omzet_transfer, 0),
       omzet_qris: result.reduce((s,k) => s + k.omzet_qris, 0),
+      omzet_invoice: result.reduce((s,k) => s + k.omzet_invoice, 0),
       total_komisi: result.reduce((s,k) => s + k.total_komisi, 0),
       total_poin: result.reduce((s,k) => s + k.total_poin, 0),
       total_kasir: result.length
@@ -1697,13 +1850,90 @@ router.put('/produk/:id/barcode', auth(['owner','admin_pusat','head_operational'
   } catch(e) { res.status(500).json({success:false, message:e.message}); }
 });
 
-// GET /api/pos/produk/:id/generate-barcode — generate barcode otomatis RV000001
+// ── MANAGEMENT POIN ──
+// GET /api/pos/poin-management — list semua produk aktif dengan komisi_poin
+router.get('/poin-management', auth(['owner','admin_pusat','head_operational']), async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT id, sku, nama, kategori, komisi_poin, komisi, harga_jual
+       FROM pos_produk WHERE aktif=1 ORDER BY nama`);
+    const totalPoin = rows.filter(r => r.komisi_poin > 0).length;
+    res.json({ success:true, data:rows, total:rows.length, total_poin:totalPoin });
+  } catch(e) { res.status(500).json({success:false, message:e.message}); }
+});
+
+// PATCH /api/pos/poin-management — bulk set komisi_poin
+router.patch('/poin-management', auth(['owner','admin_pusat','head_operational']), async (req, res) => {
+  try {
+    const { items } = req.body; // [{id, poin}]
+    if (!Array.isArray(items) || !items.length) return res.status(400).json({success:false, message:'Data kosong.'});
+    let updated = 0;
+    for (const it of items) {
+      const poin = Math.max(0, parseInt(it.poin) || 0);
+      await db.query('UPDATE pos_produk SET komisi_poin=? WHERE id=?', [poin, it.id]);
+      updated++;
+    }
+    res.json({ success:true, message:`${updated} produk diupdate.`, updated });
+  } catch(e) { res.status(500).json({success:false, message:e.message}); }
+});
+
+// DELETE /api/pos/poin-management/:id — reset poin ke 0
+router.delete('/poin-management/:id', auth(['owner','admin_pusat','head_operational']), async (req, res) => {
+  try {
+    await db.query('UPDATE pos_produk SET komisi_poin=0 WHERE id=?', [req.params.id]);
+    res.json({ success:true, message:'Poin direset ke 0.' });
+  } catch(e) { res.status(500).json({success:false, message:e.message}); }
+});
+
+// Helper: generate slug barcode dari nama produk
+// Target: 8-12 karakter, mudah discan pada label 40x30mm
+// "LUNAR HEXOHM 80W SILVER" → "LNRHXH80W"
+function _slugBarcode(nama) {
+  let s = (nama||'').toUpperCase()
+    .replace(/\b(THE|AND|FOR|WITH|DARI|DAN|UNTUK|BY|EDITION|SERIES|VERSION|AUTHENTIC|ORIGINAL|NEW|MG|OHM)\b/gi, '')
+    .replace(/[^A-Z0-9\s]/g, '')
+    .trim();
+  const words = s.split(/\s+/).filter(w => w);
+  if (!words.length) return null;
+  // Ambil max 4 kata paling penting (skip ukuran/volume di tengah)
+  const important = [];
+  const numbers = [];
+  for (const w of words) {
+    if (/^\d+\w*$/.test(w)) { numbers.push(w.slice(0,4)); continue; }
+    if (important.length < 3) important.push(w);
+  }
+  // Tiap kata: ambil 3 konsonan pertama (atau 3 huruf pertama jika vokal semua)
+  const parts = important.map(w => {
+    if (w.length <= 2) return w;
+    const c = w.replace(/[AEIOU]/g, '');
+    return (c.length >= 2 ? c : w).slice(0, 3);
+  });
+  // Tambah 1 angka paling relevan (ukuran/volume)
+  if (numbers.length) parts.push(numbers[0]);
+  return parts.join('').slice(0, 10);
+}
+
+// Generate unique barcode — tambah suffix angka jika duplikat
+async function _uniqueBarcode(db, slug) {
+  let candidate = slug;
+  let suffix = 0;
+  while (true) {
+    const [[dup]] = await db.query('SELECT id FROM pos_produk WHERE barcode=?', [candidate]);
+    if (!dup) return candidate;
+    suffix++;
+    candidate = slug.slice(0, 8) + String(suffix).padStart(2, '0');
+  }
+}
+
+// GET /api/pos/produk/:id/generate-barcode — generate barcode dari slug nama produk
 router.get('/produk/:id/generate-barcode', auth(['owner','admin_pusat','head_operational']), async (req, res) => {
   try {
-    const [[p]] = await db.query('SELECT id,barcode FROM pos_produk WHERE id=?', [req.params.id]);
+    const [[p]] = await db.query('SELECT id,nama,barcode FROM pos_produk WHERE id=?', [req.params.id]);
     if (!p) return res.status(404).json({success:false, message:'Produk tidak ditemukan.'});
     if (p.barcode) return res.json({success:true, barcode:p.barcode, message:'Sudah punya barcode.'});
-    const barcode = 'RV' + String(p.id).padStart(6,'0');
+    const slug = _slugBarcode(p.nama);
+    if (!slug) return res.status(400).json({success:false, message:'Nama produk tidak valid untuk barcode.'});
+    const barcode = await _uniqueBarcode(db, slug);
     await db.query('UPDATE pos_produk SET barcode=? WHERE id=?', [barcode, p.id]);
     res.json({success:true, barcode, message:'Barcode berhasil digenerate.'});
   } catch(e) { res.status(500).json({success:false, message:e.message}); }
@@ -1712,10 +1942,12 @@ router.get('/produk/:id/generate-barcode', auth(['owner','admin_pusat','head_ope
 // POST /api/pos/barcode/generate-all — generate barcode untuk semua produk tanpa barcode
 router.post('/barcode/generate-all', auth(['owner','admin_pusat','head_operational']), async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT id FROM pos_produk WHERE barcode IS NULL OR barcode="" ORDER BY id');
+    const [rows] = await db.query('SELECT id,nama FROM pos_produk WHERE (barcode IS NULL OR barcode="") AND aktif=1 ORDER BY id');
     let count = 0;
     for (const r of rows) {
-      const barcode = 'RV' + String(r.id).padStart(6,'0');
+      const slug = _slugBarcode(r.nama);
+      if (!slug) continue;
+      const barcode = await _uniqueBarcode(db, slug);
       await db.query('UPDATE pos_produk SET barcode=? WHERE id=?', [barcode, r.id]);
       count++;
     }
@@ -1738,11 +1970,12 @@ router.post('/opname', auth(['owner','admin_pusat','head_operational','manajer',
     const [result] = await db.query(
       `INSERT INTO stock_opname_sesi (kode_opname,cabang_id,tanggal,status,catatan,user_id) VALUES (?,?,?,'proses',?,?)`,
       [kode, cabang_id, tanggal, catatan||'', req.user.id]);
-    // Auto-populate semua produk aktif dengan stok sistem
+    // Auto-populate produk yang punya stok di cabang ini (qty > 0)
     const [produk] = await db.query(
-      `SELECT p.id, p.barcode, p.nama, COALESCE(s.qty,0) as stok
-       FROM pos_produk p LEFT JOIN pos_stok s ON s.produk_id=p.id AND s.cabang_id=?
-       WHERE p.aktif=1`, [cabang_id]);
+      `SELECT p.id, p.barcode, p.nama, s.qty as stok
+       FROM pos_produk p
+       JOIN pos_stok s ON s.produk_id=p.id AND s.cabang_id=?
+       WHERE p.aktif=1 AND s.qty > 0`, [cabang_id]);
     for (const p of produk) {
       await db.query(
         `INSERT INTO stock_opname_item (opname_id,produk_id,barcode,nama_produk,stok_sistem,stok_fisik) VALUES (?,?,?,?,?,0)`,
@@ -1761,7 +1994,9 @@ router.get('/opname', auth(), async (req, res) => {
     const [rows] = await db.query(
       `SELECT s.*, c.nama as nama_cabang, u.nama_lengkap as nama_user,
               (SELECT COUNT(*) FROM stock_opname_item WHERE opname_id=s.id) as total_item,
-              (SELECT COUNT(*) FROM stock_opname_item WHERE opname_id=s.id AND scanned_at IS NOT NULL) as total_scan
+              (SELECT COUNT(*) FROM stock_opname_item WHERE opname_id=s.id AND scanned_at IS NOT NULL) as total_scan,
+              (SELECT COALESCE(SUM(stok_sistem),0) FROM stock_opname_item WHERE opname_id=s.id) as total_qty_sistem,
+              (SELECT COALESCE(SUM(stok_fisik),0) FROM stock_opname_item WHERE opname_id=s.id AND scanned_at IS NOT NULL) as total_qty_fisik
        FROM stock_opname_sesi s
        LEFT JOIN cabang c ON s.cabang_id=c.id
        LEFT JOIN users u ON s.user_id=u.id
@@ -1786,6 +2021,7 @@ router.get('/opname/:id', auth(), async (req, res) => {
 });
 
 // POST /api/pos/opname/:id/scan — scan barcode, input stok fisik
+// LIVE OPNAME: catat stok DB realtime saat scan (bukan snapshot awal)
 router.post('/opname/:id/scan', auth(), async (req, res) => {
   try {
     const { barcode, produk_id, stok_fisik, keterangan } = req.body;
@@ -1806,42 +2042,56 @@ router.post('/opname/:id/scan', auth(), async (req, res) => {
       return res.status(400).json({success:false, message:'Barcode atau produk_id wajib diisi.'});
     }
 
+    // Ambil stok DB SAAT INI (realtime, bukan snapshot awal)
+    const [[stokNow]] = await db.query('SELECT qty FROM pos_stok WHERE produk_id=? AND cabang_id=?', [produk.id, sesi.cabang_id]);
+    const stokRealtime = stokNow?.qty || 0;
+
     // Cek item sudah ada di sesi ini
     const [[existing]] = await db.query(
       'SELECT id FROM stock_opname_item WHERE opname_id=? AND produk_id=?', [req.params.id, produk.id]);
 
     const fisik = parseInt(stok_fisik)||0;
     if (existing) {
+      // Update: refresh stok_saat_scan ke realtime DB
       await db.query(
-        `UPDATE stock_opname_item SET stok_fisik=?, keterangan=?, scanned_at=NOW() WHERE id=?`,
-        [fisik, keterangan||null, existing.id]);
+        `UPDATE stock_opname_item SET stok_fisik=?, stok_saat_scan=?, keterangan=?, scanned_at=NOW() WHERE id=?`,
+        [fisik, stokRealtime, keterangan||null, existing.id]);
     } else {
       // Auto-tambah (produk baru yang belum di-populate)
-      const [[stokRow]] = await db.query('SELECT qty FROM pos_stok WHERE produk_id=? AND cabang_id=?', [produk.id, sesi.cabang_id]);
       await db.query(
-        `INSERT INTO stock_opname_item (opname_id,produk_id,barcode,nama_produk,stok_sistem,stok_fisik,keterangan,scanned_at) VALUES (?,?,?,?,?,?,?,NOW())`,
-        [req.params.id, produk.id, produk.barcode||null, produk.nama, stokRow?.qty||0, fisik, keterangan||null]);
+        `INSERT INTO stock_opname_item (opname_id,produk_id,barcode,nama_produk,stok_sistem,stok_fisik,stok_saat_scan,keterangan,scanned_at) VALUES (?,?,?,?,?,?,?,?,NOW())`,
+        [req.params.id, produk.id, produk.barcode||null, produk.nama, stokRealtime, fisik, stokRealtime, keterangan||null]);
     }
 
     // Return updated counts
     const [[counts]] = await db.query(
       `SELECT COUNT(*) as total, SUM(scanned_at IS NOT NULL) as scanned FROM stock_opname_item WHERE opname_id=?`, [req.params.id]);
-    res.json({success:true, message:`${produk.nama} — stok fisik: ${fisik}`, produk_nama:produk.nama, total:counts.total, scanned:counts.scanned});
+    res.json({success:true, message:`${produk.nama} — stok fisik: ${fisik} (sistem: ${stokRealtime})`, produk_nama:produk.nama, stok_sistem:stokRealtime, total:counts.total, scanned:counts.scanned});
   } catch(e) { res.status(500).json({success:false, message:e.message}); }
 });
 
 // PUT /api/pos/opname/:id/items/:itemId — update stok fisik manual
+// LIVE OPNAME: refresh stok DB realtime saat update
 router.put('/opname/:id/items/:itemId', auth(), async (req, res) => {
   try {
     const { stok_fisik, keterangan } = req.body;
+    const fisik = parseInt(stok_fisik)||0;
+    // Ambil produk_id & cabang dari item + sesi
+    const [[item]] = await db.query('SELECT produk_id FROM stock_opname_item WHERE id=? AND opname_id=?', [req.params.itemId, req.params.id]);
+    if (!item) return res.status(404).json({success:false, message:'Item tidak ditemukan.'});
+    const [[sesi]] = await db.query('SELECT cabang_id FROM stock_opname_sesi WHERE id=?', [req.params.id]);
+    const [[stokNow]] = await db.query('SELECT qty FROM pos_stok WHERE produk_id=? AND cabang_id=?', [item.produk_id, sesi.cabang_id]);
     await db.query(
-      `UPDATE stock_opname_item SET stok_fisik=?, keterangan=?, scanned_at=NOW() WHERE id=? AND opname_id=?`,
-      [parseInt(stok_fisik)||0, keterangan||null, req.params.itemId, req.params.id]);
+      `UPDATE stock_opname_item SET stok_fisik=?, stok_saat_scan=?, keterangan=?, scanned_at=NOW() WHERE id=? AND opname_id=?`,
+      [fisik, stokNow?.qty||0, keterangan||null, req.params.itemId, req.params.id]);
     res.json({success:true, message:'Stok fisik diupdate.'});
   } catch(e) { res.status(500).json({success:false, message:e.message}); }
 });
 
 // POST /api/pos/opname/:id/selesai — finalisasi opname, update stok
+// LIVE OPNAME: pakai DELTA (adjustment), bukan overwrite
+// Rumus: stok_baru = stok_db_saat_ini + (stok_fisik - stok_saat_scan)
+// Ini mempertahankan semua transaksi yang terjadi SETELAH item discan
 router.post('/opname/:id/selesai', auth(['owner','admin_pusat','head_operational','manajer','kepala_cabang']), async (req, res) => {
   const conn = await db.getConnection();
   try {
@@ -1849,36 +2099,63 @@ router.post('/opname/:id/selesai', auth(['owner','admin_pusat','head_operational
     const [[sesi]] = await conn.query('SELECT * FROM stock_opname_sesi WHERE id=? AND status="proses"', [req.params.id]);
     if (!sesi) return res.status(400).json({success:false, message:'Sesi opname tidak aktif atau sudah selesai.'});
 
+    // Hitung transaksi POS yang terjadi selama opname berlangsung
+    const [[trxCount]] = await conn.query(
+      `SELECT COUNT(*) as c FROM pos_transaksi WHERE cabang_id=? AND status='selesai' AND created_at>=?`,
+      [sesi.cabang_id, sesi.created_at]);
+
     const [items] = await conn.query('SELECT * FROM stock_opname_item WHERE opname_id=? AND scanned_at IS NOT NULL', [req.params.id]);
     let updated=0, plus=0, minus=0, sama=0;
+    const details = [];
+
     for (const item of items) {
-      const selisih = item.stok_fisik - item.stok_sistem;
-      if (selisih === 0) { sama++; continue; }
+      // stok_saat_scan = stok DB pada saat item discan (realtime)
+      // Jika null (data lama), fallback ke stok_sistem (snapshot awal)
+      const baseline = item.stok_saat_scan !== null ? item.stok_saat_scan : item.stok_sistem;
+      const adjustment = item.stok_fisik - baseline; // selisih nyata saat dihitung
+
+      if (adjustment === 0) { sama++; continue; }
+
+      // Ambil stok DB terkini (mungkin sudah berubah karena transaksi setelah scan)
+      const [[stokNow]] = await conn.query('SELECT qty FROM pos_stok WHERE produk_id=? AND cabang_id=?', [item.produk_id, sesi.cabang_id]);
+      const stokSekarang = stokNow?.qty || 0;
+
+      // DELTA: apply adjustment ke stok saat ini, bukan overwrite
+      const stokBaru = Math.max(0, stokSekarang + adjustment);
+
       await conn.query(`INSERT INTO pos_stok (produk_id,cabang_id,qty) VALUES (?,?,?)
-        ON DUPLICATE KEY UPDATE qty=VALUES(qty)`, [item.produk_id, sesi.cabang_id, item.stok_fisik]);
-      const tipe = selisih > 0 ? 'opname_plus' : 'opname_minus';
+        ON DUPLICATE KEY UPDATE qty=?`, [item.produk_id, sesi.cabang_id, stokBaru, stokBaru]);
+
+      const tipe = adjustment > 0 ? 'opname_plus' : 'opname_minus';
       await conn.query(`INSERT INTO pos_stok_log (produk_id,cabang_id,tipe,qty,keterangan,user_id) VALUES (?,?,?,?,?,?)`,
-        [item.produk_id, sesi.cabang_id, tipe, Math.abs(selisih),
-         `Opname ${sesi.kode_opname}: sistem ${item.stok_sistem} → fisik ${item.stok_fisik} (${selisih>0?'+':''}${selisih})`, req.user.id]);
-      if (selisih > 0) plus++; else minus++;
+        [item.produk_id, sesi.cabang_id, tipe, Math.abs(adjustment),
+         `Opname ${sesi.kode_opname}: scan(${baseline}) fisik(${item.stok_fisik}) adj(${adjustment>0?'+':''}${adjustment}) → DB(${stokSekarang}→${stokBaru})`,
+         req.user.id]);
+
+      if (adjustment > 0) plus++; else minus++;
       updated++;
+      details.push({nama:item.nama_produk, baseline, fisik:item.stok_fisik, adjustment, stok_before:stokSekarang, stok_after:stokBaru});
     }
-    await conn.query('UPDATE stock_opname_sesi SET status="selesai", finished_at=NOW() WHERE id=?', [req.params.id]);
+
+    await conn.query('UPDATE stock_opname_sesi SET status="selesai", finished_at=NOW(), trx_selama_opname=? WHERE id=?',
+      [trxCount.c, req.params.id]);
     await conn.commit();
-    audit(req, 'selesai', 'opname', req.params.id, sesi.kode_opname, {updated,plus,minus,sama});
-    res.json({success:true, message:`Opname selesai: ${updated} produk diupdate (${plus} plus, ${minus} minus), ${sama} sesuai, ${items.length-updated-sama} belum discan.`});
+
+    audit(req, 'selesai', 'opname', req.params.id, sesi.kode_opname, {updated,plus,minus,sama,trx_selama:trxCount.c});
+    let msg = `Opname selesai: ${updated} produk diadjust (${plus} plus, ${minus} minus), ${sama} sesuai.`;
+    if (trxCount.c > 0) msg += ` ${trxCount.c} transaksi POS terjadi selama opname — stok tetap akurat.`;
+    res.json({success:true, message:msg, data:{updated,plus,minus,sama,trx_selama_opname:trxCount.c, details}});
   } catch(e) { await conn.rollback(); res.status(500).json({success:false, message:e.message}); }
   finally { conn.release(); }
 });
 
-// POST /api/pos/opname/:id/batal — batalkan sesi
-router.post('/opname/:id/batal', auth(['owner','admin_pusat','head_operational']), async (req, res) => {
+// POST /api/pos/opname/:id/batal — batalkan sesi (soft-delete: status=batal, tetap di history)
+router.post('/opname/:id/batal', auth(['owner','admin_pusat','head_operational','manajer','kepala_cabang','spv_area']), async (req, res) => {
   try {
     const [[sesi]] = await db.query('SELECT * FROM stock_opname_sesi WHERE id=?', [req.params.id]);
     if (!sesi) return res.status(404).json({success:false, message:'Sesi tidak ditemukan.'});
     if (sesi.status === 'selesai') return res.status(400).json({success:false, message:'Sesi sudah selesai, tidak bisa dibatalkan.'});
-    await db.query('DELETE FROM stock_opname_item WHERE opname_id=?', [req.params.id]);
-    await db.query('DELETE FROM stock_opname_sesi WHERE id=?', [req.params.id]);
+    await db.query("UPDATE stock_opname_sesi SET status='batal', finished_at=NOW() WHERE id=?", [req.params.id]);
     res.json({success:true, message:'Sesi opname dibatalkan.'});
   } catch(e) { res.status(500).json({success:false, message:e.message}); }
 });

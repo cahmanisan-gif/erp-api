@@ -71,6 +71,7 @@ app.use('/api/laporan-pdf', require('./routes/laporan-pdf'));
 app.use('/api/dashboard',   require('./routes/dashboard'));
 app.use('/api/sync',        require('./routes/sync'));
 app.use('/api/footer-config', require('./routes/footer-config'));
+app.use('/api/module-akses', require('./routes/module-akses'));
 
 app.get('/api/ping', (req, res) => res.json({ success:true, message:'Server Raja Vapor aktif!' }));
 

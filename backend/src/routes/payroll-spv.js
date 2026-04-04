@@ -22,17 +22,30 @@ router.get('/mapping', auth(), async (req, res) => {
   } catch(e) { res.status(500).json({ success:false, message:e.message }); }
 });
 
-// POST /api/payroll-spv/mapping - set mapping SPV ke toko
+// POST /api/payroll-spv/mapping - set mapping SPV ke toko — sinkron ke spv_area_cabang + cabang.spv_id
 router.post('/mapping', auth(['owner']), async (req, res) => {
   try {
     const { personnel_id, nama, cabang_ids } = req.body;
     if (!personnel_id || !cabang_ids?.length) return res.status(400).json({success:false,message:'Data tidak lengkap.'});
-    // Hapus mapping lama
+
+    // 1) Update spv_cabang (payroll)
     await db.query('DELETE FROM spv_cabang WHERE personnel_id=?', [personnel_id]);
-    // Insert mapping baru
     for (const cid of cabang_ids) {
       await db.query('INSERT INTO spv_cabang (personnel_id,nama,cabang_id) VALUES (?,?,?)', [personnel_id, nama, cid]);
     }
+
+    // 2) Sinkron ke spv_area_cabang + cabang.spv_id via user account
+    const [[user]] = await db.query('SELECT id FROM users WHERE personnel_id=? AND role=? AND aktif=1', [personnel_id, 'spv_area']);
+    if (user) {
+      await db.query('DELETE FROM spv_area_cabang WHERE user_id=?', [user.id]);
+      for (const cid of cabang_ids) {
+        await db.query('INSERT INTO spv_area_cabang (user_id, cabang_id) VALUES (?,?)', [user.id, cid]);
+      }
+      await db.query('UPDATE cabang SET spv_id=NULL WHERE spv_id=?', [user.id]);
+      const ph = cabang_ids.map(() => '?').join(',');
+      await db.query(`UPDATE cabang SET spv_id=? WHERE id IN (${ph})`, [user.id, ...cabang_ids]);
+    }
+
     res.json({ success:true, message:'Mapping SPV disimpan.' });
   } catch(e) { res.status(500).json({ success:false, message:e.message }); }
 });

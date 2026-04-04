@@ -83,8 +83,8 @@ router.patch('/:id', auth(['owner','head_operational','admin_pusat']), async (re
     await db.query(
       'UPDATE cabang SET kode=?, nama=?, nama_toko=?, kecamatan=?, kabupaten=?, telepon=?, pengelola_id=?, spv_id=?, manajer_area_id=?, aktif=?, tanggal_buka=?, lat=?, lng=? WHERE id=?',
       [kode, nama, nama_toko||'', kecamatan||'', kabupaten||'', telepon||'', pengelola_id||null, spv_id||null, manajer_area_id||null, aktif??1, tanggal_buka||null,
-       (lat !== undefined && lat !== '') ? parseFloat(lat) : null,
-       (lng !== undefined && lng !== '') ? parseFloat(lng) : null,
+       lat ? parseFloat(lat) : null,
+       lng ? parseFloat(lng) : null,
        req.params.id]
     );
     res.json({ success:true, message:'Cabang berhasil diupdate.' });

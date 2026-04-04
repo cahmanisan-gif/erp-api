@@ -2,9 +2,10 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../config/database');
 const auth    = require('../middleware/auth');
+const { requireModule } = require('../middleware/moduleAccess');
 
 // ── MASTER KARYAWAN PAYROLL ──
-router.get('/karyawan', auth(), async (req, res) => {
+router.get('/karyawan', auth(), requireModule('payroll'), async (req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM payroll_karyawan WHERE aktif=1 ORDER BY nama');
     res.json({ success:true, data:rows });

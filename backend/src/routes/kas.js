@@ -2,11 +2,12 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../config/database');
 const auth    = require('../middleware/auth');
+const { requireModule } = require('../middleware/moduleAccess');
 
 const ROLES = ['owner'];
 
 // GET semua akun + saldo real-time
-router.get('/akun', auth(ROLES), async (req, res) => {
+router.get('/akun', auth(), requireModule('kas_bank'), async (req, res) => {
   try {
     const [akun] = await db.query('SELECT * FROM kas_akun WHERE aktif=1 ORDER BY nama_bank');
     for (const a of akun) {
@@ -58,7 +59,7 @@ router.delete('/akun/:id', auth(ROLES), async (req, res) => {
 });
 
 // GET mutasi per akun
-router.get('/mutasi', auth(ROLES), async (req, res) => {
+router.get('/mutasi', auth(), requireModule('kas_bank'), async (req, res) => {
   try {
     const { akun_id, bulan, tahun } = req.query;
     let where = 'WHERE 1=1';

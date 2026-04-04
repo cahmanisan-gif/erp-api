@@ -342,7 +342,14 @@ async function cekShift() {
   SHIFT = res.data;
   const btn = document.getElementById('btn-shift');
   if (SHIFT) { btn.textContent='✓ Shift Aktif'; btn.className='btn-shift open'; }
-  else { btn.textContent='⏱ Buka Shift'; btn.className='btn-shift'; }
+  else {
+    // Auto-open shift untuk kasir_sales & sales gudang
+    if (['kasir_sales','sales'].includes(POS_USER.role)) {
+      const autoRes = await posApi('/pos/shift/buka','POST',{cabang_id:POS_USER.cabang_id, modal_awal:0});
+      if (autoRes.success) { SHIFT={id:autoRes.shift_id}; btn.textContent='✓ Shift Aktif'; btn.className='btn-shift open'; return; }
+    }
+    btn.textContent='⏱ Buka Shift'; btn.className='btn-shift';
+  }
 }
 
 // ── PRODUK ──

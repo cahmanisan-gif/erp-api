@@ -55,10 +55,13 @@ router.get('/owner', auth(['owner','manajer','manajer_area','head_operational','
       // 3b. Invoice bulan ini
       db.query(`SELECT COALESCE(SUM(total),0) as omzet, COUNT(*) as cnt FROM invoice
         WHERE status IN ('diterbitkan','lunas') AND tanggal>=? AND tanggal<=?`, [bulanIni, today]).then(r=>r[0]),
-      // 4. Trend 7 hari POS
-      db.query(`SELECT DATE(created_at) as tgl, COALESCE(SUM(total),0) as omzet, COUNT(*) as trx
-        FROM pos_transaksi WHERE status='selesai' AND created_at>=?
-        GROUP BY DATE(created_at) ORDER BY tgl ASC`, [d7ago+' 00:00:00']).then(r=>r[0]),
+      // 4. Trend 7 hari POS (omzet + trx + hpp)
+      db.query(`SELECT DATE(t.created_at) as tgl, COALESCE(SUM(t.total),0) as omzet, COUNT(*) as trx,
+        COALESCE(SUM(hpp_sub.hpp),0) as hpp
+        FROM pos_transaksi t
+        LEFT JOIN (SELECT transaksi_id, SUM(harga_modal * qty) as hpp FROM pos_transaksi_item GROUP BY transaksi_id) hpp_sub ON hpp_sub.transaksi_id=t.id
+        WHERE t.status='selesai' AND t.created_at>=?
+        GROUP BY DATE(t.created_at) ORDER BY tgl ASC`, [d7ago+' 00:00:00']).then(r=>r[0]),
       // 4b. Trend 7 hari invoice
       db.query(`SELECT tanggal as tgl, COALESCE(SUM(total),0) as omzet, COUNT(*) as cnt
         FROM invoice WHERE status IN ('diterbitkan','lunas') AND tanggal>=?
@@ -110,9 +113,9 @@ router.get('/owner', auth(['owner','manajer','manajer_area','head_operational','
     };
 
     const trendMap = {};
-    trend7pos_.forEach(r => { const d = r.tgl instanceof Date ? r.tgl.toISOString().slice(0,10) : String(r.tgl); trendMap[d] = { omzet: parseFloat(r.omzet), trx: parseInt(r.trx) }; });
-    trend7inv_.forEach(r => { const d = r.tgl instanceof Date ? r.tgl.toISOString().slice(0,10) : String(r.tgl); if (!trendMap[d]) trendMap[d] = { omzet:0, trx:0 }; trendMap[d].omzet += parseFloat(r.omzet); trendMap[d].trx += parseInt(r.cnt); });
-    const trend7 = Object.keys(trendMap).sort().map(tgl => ({ tgl, omzet: trendMap[tgl].omzet, trx: trendMap[tgl].trx }));
+    trend7pos_.forEach(r => { const d = r.tgl instanceof Date ? r.tgl.toISOString().slice(0,10) : String(r.tgl); trendMap[d] = { omzet: parseFloat(r.omzet), trx: parseInt(r.trx), hpp: parseFloat(r.hpp||0) }; });
+    trend7inv_.forEach(r => { const d = r.tgl instanceof Date ? r.tgl.toISOString().slice(0,10) : String(r.tgl); if (!trendMap[d]) trendMap[d] = { omzet:0, trx:0, hpp:0 }; trendMap[d].omzet += parseFloat(r.omzet); trendMap[d].trx += parseInt(r.cnt); });
+    const trend7 = Object.keys(trendMap).sort().map(tgl => ({ tgl, omzet: trendMap[tgl].omzet, trx: trendMap[tgl].trx, hpp: trendMap[tgl].hpp, keuntungan: trendMap[tgl].omzet - trendMap[tgl].hpp }));
 
     const topMap = {};
     topCabangPOS_.forEach(r => { topMap[r.cabang_id] = { cabang_id: r.cabang_id, nama: r.nama, kode: r.kode, omzet: parseFloat(r.omzet), trx: parseInt(r.trx) }; });
@@ -151,7 +154,7 @@ router.get('/owner', auth(['owner','manajer','manajer_area','head_operational','
       trx_bulan_ini: parseInt(omzetBulan.trx),
       growth_vs_kemarin: omzetYesterday.omzet > 0
         ? Math.round((omzetToday.omzet - omzetYesterday.omzet) / omzetYesterday.omzet * 100) : null,
-      trend_7_hari: trend7.map(r => ({tgl:r.tgl, omzet:parseFloat(r.omzet), trx:parseInt(r.trx)})),
+      trend_7_hari: trend7.map(r => ({tgl:r.tgl, omzet:parseFloat(r.omzet), trx:parseInt(r.trx), hpp:parseFloat(r.hpp), keuntungan:parseFloat(r.keuntungan)})),
       top_cabang: topCabang.map(r => ({...r, omzet:parseFloat(r.omzet)})),
       top_produk: topProduk.map(r => ({...r, total_omzet:parseFloat(r.total_omzet), total_qty:parseInt(r.total_qty)})),
       top_kasir: topKasir.map(r => ({...r, omzet:parseFloat(r.omzet)})),
@@ -162,6 +165,183 @@ router.get('/owner', auth(['owner','manajer','manajer_area','head_operational','
     }});
   } catch(e) {
     console.error('dashboard owner:', e);
+    res.status(500).json({success:false, message:e.message});
+  }
+});
+
+// GET /api/dashboard/leaderboard-retail — leaderboard omzet & poin kasir seluruh cabang retail
+router.get('/leaderboard-retail', auth(), async (req, res) => {
+  try {
+    const GUDANG_IDS = [3, 4]; // exclude GUDANG-S, GUDANG-R
+    const today = new Date().toISOString().slice(0,10);
+    const ph = GUDANG_IDS.map(() => '?').join(',');
+
+    // Leaderboard omzet per kasir hari ini (semua cabang retail)
+    const [omzetRows] = await db.query(`
+      SELECT t.kasir_id, MAX(u.nama_lengkap) as nama_lengkap, MAX(c.nama) as nama_cabang, MAX(c.kode) as kode_cabang,
+             COALESCE(SUM(t.total),0) as omzet, COUNT(*) as trx
+      FROM pos_transaksi t
+      LEFT JOIN users u ON u.id=t.kasir_id
+      LEFT JOIN cabang c ON c.id=t.cabang_id
+      WHERE t.status='selesai' AND t.cabang_id NOT IN (${ph})
+        AND t.created_at >= ? AND t.created_at <= ?
+      GROUP BY t.kasir_id ORDER BY omzet DESC LIMIT 20`,
+      [...GUDANG_IDS, today+' 00:00:00', today+' 23:59:59']);
+
+    // Leaderboard omzet per toko hari ini
+    const [tokoRows] = await db.query(`
+      SELECT t.cabang_id, MAX(c.nama) as nama_cabang, MAX(c.kode) as kode_cabang,
+             COALESCE(SUM(t.total),0) as omzet, COUNT(*) as trx
+      FROM pos_transaksi t
+      LEFT JOIN cabang c ON c.id=t.cabang_id
+      WHERE t.status='selesai' AND t.cabang_id NOT IN (${ph})
+        AND t.created_at >= ? AND t.created_at <= ?
+      GROUP BY t.cabang_id ORDER BY omzet DESC LIMIT 20`,
+      [...GUDANG_IDS, today+' 00:00:00', today+' 23:59:59']);
+
+    // Leaderboard poin per kasir hari ini
+    const [poinRows] = await db.query(`
+      SELECT t.kasir_id, MAX(u.nama_lengkap) as nama_lengkap, MAX(c.nama) as nama_cabang,
+             COALESCE(SUM(ti.komisi_poin * ti.qty),0) as total_poin
+      FROM pos_transaksi t
+      JOIN pos_transaksi_item ti ON ti.transaksi_id=t.id
+      LEFT JOIN users u ON u.id=t.kasir_id
+      LEFT JOIN cabang c ON c.id=t.cabang_id
+      WHERE t.status='selesai' AND t.cabang_id NOT IN (${ph})
+        AND t.created_at >= ? AND t.created_at <= ?
+      GROUP BY t.kasir_id HAVING total_poin > 0
+      ORDER BY total_poin DESC LIMIT 20`,
+      [...GUDANG_IDS, today+' 00:00:00', today+' 23:59:59']);
+
+    const userId = req.user.id;
+    const fmt = rows => rows.map(r => ({
+      ...r, omzet: parseFloat(r.omzet||0), trx: parseInt(r.trx||0),
+      total_poin: parseInt(r.total_poin||0), is_me: r.kasir_id === userId || r.cabang_id === req.user.cabang_id
+    }));
+
+    res.json({ success: true, data: {
+      top_kasir: fmt(omzetRows),
+      top_toko: fmt(tokoRows),
+      top_poin: fmt(poinRows),
+    }});
+  } catch(e) {
+    console.error('leaderboard-retail:', e);
+    res.status(500).json({ success:false, message:e.message });
+  }
+});
+
+// GET /api/dashboard/sales — dashboard khusus kasir_sales & sales (GUDANG SALES)
+router.get('/sales', auth(), async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const GUDANG_ID = 3;
+    const today = new Date().toISOString().slice(0,10);
+    const now = new Date();
+    const bulanDari = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-01';
+    const { dari, sampai } = req.query;
+    const customDari = dari || bulanDari;
+    const customSampai = sampai || today;
+
+    const [
+      [myPosToday_], [myInvToday_],
+      [myPosBulan_], [myInvBulan_],
+      [myPosCustom_], [myInvCustom_],
+      topKasirToday_, topKasirBulan_,
+      topInvToday_, topInvBulan_,
+    ] = await Promise.all([
+      // Omzet POS pribadi hari ini
+      db.query(`SELECT COALESCE(SUM(total),0) as omzet, COUNT(*) as trx
+        FROM pos_transaksi WHERE kasir_id=? AND status='selesai'
+        AND created_at>=? AND created_at<=?`, [userId, today+' 00:00:00', today+' 23:59:59']).then(r=>r[0]),
+      // Omzet invoice pribadi hari ini
+      db.query(`SELECT COALESCE(SUM(total),0) as omzet, COUNT(*) as cnt
+        FROM invoice WHERE sales_id=? AND status IN ('diterbitkan','lunas') AND tanggal=?`, [userId, today]).then(r=>r[0]),
+      // Omzet POS pribadi bulan ini
+      db.query(`SELECT COALESCE(SUM(total),0) as omzet, COUNT(*) as trx
+        FROM pos_transaksi WHERE kasir_id=? AND status='selesai'
+        AND created_at>=? AND created_at<=?`, [userId, bulanDari+' 00:00:00', today+' 23:59:59']).then(r=>r[0]),
+      // Omzet invoice pribadi bulan ini
+      db.query(`SELECT COALESCE(SUM(total),0) as omzet, COUNT(*) as cnt
+        FROM invoice WHERE sales_id=? AND status IN ('diterbitkan','lunas')
+        AND tanggal>=? AND tanggal<=?`, [userId, bulanDari, today]).then(r=>r[0]),
+      // Omzet POS custom period
+      db.query(`SELECT COALESCE(SUM(total),0) as omzet, COUNT(*) as trx
+        FROM pos_transaksi WHERE kasir_id=? AND status='selesai'
+        AND created_at>=? AND created_at<=?`, [userId, customDari+' 00:00:00', customSampai+' 23:59:59']).then(r=>r[0]),
+      // Omzet invoice custom period
+      db.query(`SELECT COALESCE(SUM(total),0) as omzet, COUNT(*) as cnt
+        FROM invoice WHERE sales_id=? AND status IN ('diterbitkan','lunas')
+        AND tanggal>=? AND tanggal<=?`, [userId, customDari, customSampai]).then(r=>r[0]),
+      // Top kasir gudang hari ini (POS)
+      db.query(`SELECT t.kasir_id, u.nama_lengkap, COALESCE(SUM(t.total),0) as omzet, COUNT(*) as trx
+        FROM pos_transaksi t LEFT JOIN users u ON u.id=t.kasir_id
+        WHERE t.cabang_id=? AND t.status='selesai' AND t.created_at>=? AND t.created_at<=?
+        GROUP BY t.kasir_id ORDER BY omzet DESC LIMIT 10`,
+        [GUDANG_ID, today+' 00:00:00', today+' 23:59:59']).then(r=>r[0]),
+      // Top kasir gudang bulan ini (POS)
+      db.query(`SELECT t.kasir_id, u.nama_lengkap, COALESCE(SUM(t.total),0) as omzet, COUNT(*) as trx
+        FROM pos_transaksi t LEFT JOIN users u ON u.id=t.kasir_id
+        WHERE t.cabang_id=? AND t.status='selesai' AND t.created_at>=? AND t.created_at<=?
+        GROUP BY t.kasir_id ORDER BY omzet DESC LIMIT 10`,
+        [GUDANG_ID, bulanDari+' 00:00:00', today+' 23:59:59']).then(r=>r[0]),
+      // Top sales invoice hari ini
+      db.query(`SELECT i.sales_id, u.nama_lengkap, COALESCE(SUM(i.total),0) as omzet, COUNT(*) as cnt
+        FROM invoice i LEFT JOIN users u ON u.id=i.sales_id
+        WHERE i.status IN ('diterbitkan','lunas') AND i.tanggal=?
+        GROUP BY i.sales_id ORDER BY omzet DESC LIMIT 10`, [today]).then(r=>r[0]),
+      // Top sales invoice bulan ini
+      db.query(`SELECT i.sales_id, u.nama_lengkap, COALESCE(SUM(i.total),0) as omzet, COUNT(*) as cnt
+        FROM invoice i LEFT JOIN users u ON u.id=i.sales_id
+        WHERE i.status IN ('diterbitkan','lunas') AND i.tanggal>=? AND i.tanggal<=?
+        GROUP BY i.sales_id ORDER BY omzet DESC LIMIT 10`, [bulanDari, today]).then(r=>r[0]),
+    ]);
+
+    // Top produk dari GUDANG SALES — multi period
+    const periods = {
+      hari_ini: [today+' 00:00:00', today+' 23:59:59'],
+      '7_hari': [new Date(Date.now()-6*86400000).toISOString().slice(0,10)+' 00:00:00', today+' 23:59:59'],
+      bulan_ini: [bulanDari+' 00:00:00', today+' 23:59:59'],
+      tahun_ini: [now.getFullYear()+'-01-01 00:00:00', today+' 23:59:59'],
+    };
+    const topProduk = {};
+    for (const [key, [d1, d2]] of Object.entries(periods)) {
+      const [rows] = await db.query(`SELECT ti.nama_produk, SUM(ti.qty) as total_qty, COALESCE(SUM(ti.harga_jual*ti.qty),0) as total_omzet
+        FROM pos_transaksi_item ti JOIN pos_transaksi t ON t.id=ti.transaksi_id
+        WHERE t.cabang_id=? AND t.status='selesai' AND t.created_at>=? AND t.created_at<=?
+        GROUP BY ti.produk_id, ti.nama_produk ORDER BY total_qty DESC LIMIT 10`, [GUDANG_ID, d1, d2]);
+      topProduk[key] = rows.map(r => ({nama:r.nama_produk, qty:parseInt(r.total_qty), omzet:parseFloat(r.total_omzet)}));
+    }
+
+    // Merge top kasir + invoice menjadi leaderboard
+    const mergeLeaderboard = (posRows, invRows) => {
+      const map = {};
+      posRows.forEach(r => { map[r.kasir_id] = { nama: r.nama_lengkap, omzet_pos: parseFloat(r.omzet), trx_pos: parseInt(r.trx), omzet_inv: 0, cnt_inv: 0 }; });
+      invRows.forEach(r => {
+        if (!map[r.sales_id]) map[r.sales_id] = { nama: r.nama_lengkap, omzet_pos: 0, trx_pos: 0, omzet_inv: 0, cnt_inv: 0 };
+        map[r.sales_id].omzet_inv = parseFloat(r.omzet);
+        map[r.sales_id].cnt_inv = parseInt(r.cnt);
+      });
+      return Object.entries(map).map(([id, d]) => ({
+        user_id: parseInt(id), nama: d.nama,
+        omzet_pos: d.omzet_pos, trx_pos: d.trx_pos,
+        omzet_inv: d.omzet_inv, cnt_inv: d.cnt_inv,
+        total: d.omzet_pos + d.omzet_inv,
+        is_me: parseInt(id) === userId
+      })).sort((a,b) => b.total - a.total);
+    };
+
+    res.json({success:true, data:{
+      omzet_pribadi: {
+        hari_ini:  { pos: parseFloat(myPosToday_.omzet), inv: parseFloat(myInvToday_.omzet), trx: parseInt(myPosToday_.trx), cnt_inv: parseInt(myInvToday_.cnt) },
+        bulan_ini: { pos: parseFloat(myPosBulan_.omzet), inv: parseFloat(myInvBulan_.omzet), trx: parseInt(myPosBulan_.trx), cnt_inv: parseInt(myInvBulan_.cnt) },
+        custom:    { pos: parseFloat(myPosCustom_.omzet), inv: parseFloat(myInvCustom_.omzet), trx: parseInt(myPosCustom_.trx), cnt_inv: parseInt(myInvCustom_.cnt), dari: customDari, sampai: customSampai },
+      },
+      leaderboard_hari_ini: mergeLeaderboard(topKasirToday_, topInvToday_),
+      leaderboard_bulan_ini: mergeLeaderboard(topKasirBulan_, topInvBulan_),
+      top_produk: topProduk,
+    }});
+  } catch(e) {
+    console.error('dashboard sales:', e);
     res.status(500).json({success:false, message:e.message});
   }
 });

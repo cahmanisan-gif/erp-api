@@ -2,11 +2,12 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../config/database');
 const auth    = require('../middleware/auth');
+const { requireModule } = require('../middleware/moduleAccess');
 
 // GET /api/monitoring/omzet?periode=bulan-ini|bulan-lalu|tahun-lalu|custom&dari=YYYY-MM-DD&sampai=YYYY-MM-DD
 // Sumber utama: pos_transaksi (data real POS). Fallback: omzet_cabang (input manual).
 // Pengeluaran: tabel pengeluaran (approved).
-router.get('/omzet', auth(['owner','manajer','manajer_area','spv_area','head_operational']), async (req, res) => {
+router.get('/omzet', auth(), requireModule('monitoring_omzet'), async (req, res) => {
   try {
     const { periode, dari, sampai } = req.query;
     const today    = new Date();
@@ -204,6 +205,21 @@ router.get('/omzet', auth(['owner','manajer','manajer_area','spv_area','head_ope
       [...cabangIds, dateFrom+' 00:00:00', dateTo+' 23:59:59']
     );
 
+    // ── 6b. Invoice per sales → untuk staff breakdown ──
+    const [invoiceStaffRows] = await db.query(`
+      SELECT COALESCE(u.cabang_id, 3) AS cabang_id, i.sales_id AS user_id,
+             u.nama_lengkap, u.role,
+             COUNT(*) AS inv_count,
+             COALESCE(SUM(i.total),0) AS inv_total
+      FROM invoice i
+      JOIN users u ON u.id = i.sales_id
+      WHERE i.status IN ('diterbitkan','lunas')
+        AND i.tanggal BETWEEN ? AND ?
+        AND COALESCE(u.cabang_id, 3) IN (${ph})
+      GROUP BY COALESCE(u.cabang_id, 3), i.sales_id, u.nama_lengkap, u.role`,
+      [dateFrom, dateTo, ...cabangIds]
+    );
+
     // Build staff map per cabang
     const staffMap = {};
     staffRows.forEach(r => {
@@ -212,6 +228,7 @@ router.get('/omzet', auth(['owner','manajer','manajer_area','spv_area','head_ope
         user_id: r.user_id, nama: r.nama_lengkap, role: r.role,
         total_trx: parseInt(r.total_trx), omzet_total: parseFloat(r.omzet_total),
         omzet_cash: parseFloat(r.omzet_cash), omzet_transfer: parseFloat(r.omzet_transfer),
+        omzet_invoice: 0, inv_count: 0,
         total_komisi: 0, total_poin: 0
       });
     });
@@ -219,6 +236,27 @@ router.get('/omzet', auth(['owner','manajer','manajer_area','spv_area','head_ope
       const list = staffMap[r.cabang_id] || [];
       const s = list.find(x => x.user_id === r.user_id);
       if (s) { s.total_komisi = parseFloat(r.total_komisi); s.total_poin = parseInt(r.total_poin); }
+    });
+
+    // Merge invoice omzet ke staff map — sales yang sudah ada di POS atau tambah baru
+    invoiceStaffRows.forEach(r => {
+      if (!staffMap[r.cabang_id]) staffMap[r.cabang_id] = [];
+      const existing = staffMap[r.cabang_id].find(x => x.user_id === r.user_id);
+      if (existing) {
+        existing.omzet_invoice = parseFloat(r.inv_total);
+        existing.inv_count = parseInt(r.inv_count);
+      } else {
+        staffMap[r.cabang_id].push({
+          user_id: r.user_id, nama: r.nama_lengkap, role: r.role,
+          total_trx: 0, omzet_total: 0, omzet_cash: 0, omzet_transfer: 0,
+          omzet_invoice: parseFloat(r.inv_total), inv_count: parseInt(r.inv_count),
+          total_komisi: 0, total_poin: 0
+        });
+      }
+    });
+    // Sort staff per cabang by combined omzet desc
+    Object.values(staffMap).forEach(list => {
+      list.sort((a,b) => (b.omzet_total + b.omzet_invoice) - (a.omzet_total + a.omzet_invoice));
     });
 
     // ── Build maps ──
@@ -294,7 +332,7 @@ router.get('/omzet', auth(['owner','manajer','manajer_area','spv_area','head_ope
 
         if (posDay) {
           const cash = parseFloat(posDay.omzet_cash);
-          const transfer = parseFloat(posDay.omzet_transfer) + invDayTotal;
+          const transfer = parseFloat(posDay.omzet_transfer);
           return {
             tanggal: tgl,
             omzet_cash: cash,
@@ -315,7 +353,7 @@ router.get('/omzet', auth(['owner','manajer','manajer_area','spv_area','head_ope
           return {
             tanggal: tgl,
             omzet_cash: 0,
-            omzet_transfer: invDayTotal,
+            omzet_transfer: 0,
             omzet_pos: 0,
             omzet_invoice: invDayTotal,
             total_pengeluaran: pglDay,
@@ -329,7 +367,7 @@ router.get('/omzet', auth(['owner','manajer','manajer_area','spv_area','head_ope
           return {
             tanggal: tgl,
             omzet_cash: parseFloat(manualDay.omzet_cash),
-            omzet_transfer: parseFloat(manualDay.omzet_transfer) + invDayTotal,
+            omzet_transfer: parseFloat(manualDay.omzet_transfer),
             omzet_pos: parseFloat(manualDay.omzet_pos),
             omzet_invoice: invDayTotal,
             total_pengeluaran: pglDay || parseFloat(manualDay.total_pengeluaran || 0),
@@ -344,7 +382,7 @@ router.get('/omzet', auth(['owner','manajer','manajer_area','spv_area','head_ope
       return {
         cabang            : { id: cab.id, kode: cab.kode, nama: cab.nama, kota: cab.kabupaten || cab.kecamatan || '-' },
         total_cash        : totalCash,
-        total_transfer    : totalTransfer + invTotal,
+        total_transfer    : totalTransfer,
         total_omzet       : totalOmzet,
         total_pos         : parseFloat(pos.pos_total || 0),
         total_invoice     : invTotal,
@@ -366,7 +404,7 @@ router.get('/omzet', auth(['owner','manajer','manajer_area','spv_area','head_ope
 });
 
 // GET /api/monitoring/keuntungan?periode=bulan-ini|bulan-lalu|tahun-ini|custom&dari=&sampai=
-router.get('/keuntungan', auth(['owner','manajer','manajer_area','spv_area']), async (req, res) => {
+router.get('/keuntungan', auth(), requireModule('keuntungan'), async (req, res) => {
   try {
     const { periode, dari, sampai } = req.query;
     const today    = new Date();
@@ -542,7 +580,7 @@ router.get('/keuntungan', auth(['owner','manajer','manajer_area','spv_area']), a
 
 // GET /api/monitoring/deadstock?cabang_id=&kategori=&periode_bulan=3
 // Slow-moving items: stok > 0 dan estimasi habis >= 6 bulan pada velocity saat ini
-router.get('/deadstock', auth(['owner','manajer','head_operational','admin_pusat','spv_area']), async (req, res) => {
+router.get('/deadstock', auth(), requireModule('monitoring_deadstock'), async (req, res) => {
   try {
     const { getCabangAkses } = require('../middleware/cabangFilter');
     const periodeBulan = Math.max(1, parseInt(req.query.periode_bulan) || 3);
@@ -620,7 +658,7 @@ router.get('/deadstock', auth(['owner','manajer','head_operational','admin_pusat
 });
 
 // GET /api/monitoring/modal — monitoring modal seluruh cabang + history
-router.get('/modal', auth(['owner','manajer','spv_area']), async (req, res) => {
+router.get('/modal', auth(), requireModule('monitoring_modal'), async (req, res) => {
   try {
     const { getCabangAkses } = require('../middleware/cabangFilter');
     const akses = await getCabangAkses(req.user);
@@ -779,7 +817,7 @@ router.get('/modal', auth(['owner','manajer','spv_area']), async (req, res) => {
 });
 
 // GET /api/monitoring/marketplace — laporan biaya marketplace untuk arsip/DJP
-router.get('/marketplace', auth(['owner','manajer','admin_pusat','finance','head_operational']), async (req, res) => {
+router.get('/marketplace', auth(), requireModule('lap_marketplace'), async (req, res) => {
   try {
     const { dari, sampai, platform } = req.query;
     const today = new Date().toISOString().slice(0,10);
@@ -899,7 +937,7 @@ router.get('/marketplace', auth(['owner','manajer','admin_pusat','finance','head
 // ══════════════════════════════════════════════════════════════════════
 // GET /api/monitoring/laba-rugi — Laporan Laba Rugi (P&L) per cabang
 // ══════════════════════════════════════════════════════════════════════
-router.get('/laba-rugi', auth(['owner','manajer','manajer_area','spv_area','finance','head_operational','admin_pusat']), async (req, res) => {
+router.get('/laba-rugi', auth(), requireModule('laba_rugi'), async (req, res) => {
   try {
     const { periode, dari, sampai, cabang_id } = req.query;
     const today    = new Date();

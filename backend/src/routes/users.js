@@ -251,6 +251,8 @@ router.post('/generate-from-kerjoo', auth(['owner']), async (req, res) => {
 
     for (const u of userList) {
       if (!u.username || !u.nik) { skipped++; continue; }
+      // Wajib punya cabang_id untuk kasir/vaporista — cegah orphan
+      if (['kasir','vaporista','kasir_sales','kepala_cabang'].includes(u.role) && !u.cabang_id) { skipped++; continue; }
       // Cek username sudah ada
       const [existing] = await db.query('SELECT id FROM users WHERE username=?', [u.username]);
       if (existing.length) {
@@ -289,15 +291,36 @@ router.get('/:id/spv-cabang', auth(['owner','manajer','head_operational','admin_
   } catch(e) { res.status(500).json({ success:false, message:e.message }); }
 });
 
-// POST set cabang SPV Area (owner only)
+// POST set cabang SPV Area (owner only) — sinkron ke cabang.spv_id + spv_cabang (payroll)
 router.post('/:id/spv-cabang', auth(['owner']), async (req, res) => {
   try {
+    const userId = req.params.id;
     const { cabang_ids } = req.body;
     if (!Array.isArray(cabang_ids)) return res.status(400).json({ success:false, message:'cabang_ids harus array.' });
-    await db.query('DELETE FROM spv_area_cabang WHERE user_id=?', [req.params.id]);
+
+    // 1) Update spv_area_cabang (access control)
+    await db.query('DELETE FROM spv_area_cabang WHERE user_id=?', [userId]);
     for (const cid of cabang_ids) {
-      await db.query('INSERT INTO spv_area_cabang (user_id, cabang_id) VALUES (?,?)', [req.params.id, cid]);
+      await db.query('INSERT INTO spv_area_cabang (user_id, cabang_id) VALUES (?,?)', [userId, cid]);
     }
+
+    // 2) Sinkron cabang.spv_id — hapus assignment lama, set yang baru
+    await db.query('UPDATE cabang SET spv_id=NULL WHERE spv_id=?', [userId]);
+    if (cabang_ids.length) {
+      const ph = cabang_ids.map(() => '?').join(',');
+      await db.query(`UPDATE cabang SET spv_id=? WHERE id IN (${ph})`, [userId, ...cabang_ids]);
+    }
+
+    // 3) Sinkron spv_cabang (payroll SPV) — pakai personnel_id dari user
+    const [[user]] = await db.query('SELECT nama_lengkap, personnel_id FROM users WHERE id=?', [userId]);
+    if (user?.personnel_id) {
+      await db.query('DELETE FROM spv_cabang WHERE personnel_id=?', [user.personnel_id]);
+      for (const cid of cabang_ids) {
+        await db.query('INSERT INTO spv_cabang (personnel_id, nama, cabang_id) VALUES (?,?,?)',
+          [user.personnel_id, user.nama_lengkap, cid]);
+      }
+    }
+
     res.json({ success:true, message:`${cabang_ids.length} cabang berhasil diassign ke SPV Area.` });
   } catch(e) { res.status(500).json({ success:false, message:e.message }); }
 });
@@ -314,15 +337,26 @@ router.get('/:id/manajer-area-cabang', auth(['owner','admin_pusat']), async (req
   } catch(e) { res.status(500).json({ success:false, message:e.message }); }
 });
 
-// POST set cabang Manajer Area (owner only)
+// POST set cabang Manajer Area (owner only) — sinkron ke cabang.manajer_area_id
 router.post('/:id/manajer-area-cabang', auth(['owner']), async (req, res) => {
   try {
+    const userId = req.params.id;
     const { cabang_ids } = req.body;
     if (!Array.isArray(cabang_ids)) return res.status(400).json({ success:false, message:'cabang_ids harus array.' });
-    await db.query('DELETE FROM manajer_area_cabang WHERE user_id=?', [req.params.id]);
+
+    // 1) Update manajer_area_cabang (access control + bagi hasil)
+    await db.query('DELETE FROM manajer_area_cabang WHERE user_id=?', [userId]);
     for (const cid of cabang_ids) {
-      await db.query('INSERT INTO manajer_area_cabang (user_id, cabang_id) VALUES (?,?)', [req.params.id, cid]);
+      await db.query('INSERT INTO manajer_area_cabang (user_id, cabang_id) VALUES (?,?)', [userId, cid]);
     }
+
+    // 2) Sinkron cabang.manajer_area_id — hapus assignment lama, set yang baru
+    await db.query('UPDATE cabang SET manajer_area_id=NULL WHERE manajer_area_id=?', [userId]);
+    if (cabang_ids.length) {
+      const ph = cabang_ids.map(() => '?').join(',');
+      await db.query(`UPDATE cabang SET manajer_area_id=? WHERE id IN (${ph})`, [userId, ...cabang_ids]);
+    }
+
     res.json({ success:true, message:`${cabang_ids.length} cabang berhasil diassign ke Manajer Area.` });
   } catch(e) { res.status(500).json({ success:false, message:e.message }); }
 });
