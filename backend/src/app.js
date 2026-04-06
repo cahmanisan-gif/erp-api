@@ -57,6 +57,7 @@ app.use('/api/pos', require('./routes/pos'));
 app.use('/api/supplier', require('./routes/supplier'));
 app.use('/api/pembelian', require('./routes/pembelian'));
 app.use('/api/piutang', require('./routes/piutang'));
+app.use('/api/hutang',  require('./routes/hutang'));
 app.use('/api/pos-settings', require('./routes/pos-settings'));
 app.use('/api/kas', require('./routes/kas'));
 app.use('/api/monitoring', require('./routes/monitoring'));
@@ -72,6 +73,10 @@ app.use('/api/dashboard',   require('./routes/dashboard'));
 app.use('/api/sync',        require('./routes/sync'));
 app.use('/api/footer-config', require('./routes/footer-config'));
 app.use('/api/module-akses', require('./routes/module-akses'));
+app.use('/api/prediksi-stok', require('./routes/prediksi-stok'));
+app.use('/api/surat-jalan', require('./routes/surat-jalan'));
+app.use('/api/wa',           require('./routes/wa'));
+app.use('/api/laporan-keuangan', require('./routes/laporan-keuangan'));
 
 app.get('/api/ping', (req, res) => res.json({ success:true, message:'Server Raja Vapor aktif!' }));
 

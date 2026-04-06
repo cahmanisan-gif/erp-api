@@ -247,12 +247,27 @@ router.post('/:id/terima', auth(['owner','manajer','head_operational','admin_pus
         [pb.kas_akun_id_lain, tglNow, pb.biaya_lainnya, `Biaya Lainnya Pembelian ${pb.nomor}`, req.user.id]).catch(e=>console.error('kas_mutasi lain:',e.message));
     }
 
-    // 3. Update status
+    // 3. Auto-create hutang supplier if not paid (no kas_akun_id)
+    if (!pb.kas_akun_id && pb.total > 0) {
+      // Check if hutang for this pembelian already exists
+      const [[existHutang]] = await conn.query('SELECT id FROM hutang_supplier WHERE pembelian_id=?',[req.params.id]);
+      if (!existHutang) {
+        await conn.query(`INSERT INTO hutang_supplier
+          (supplier_id, pembelian_id, cabang_id, nama_supplier, keterangan, total, jatuh_tempo, created_by)
+          VALUES (?,?,?,?,?,?,?,?)`,
+          [pb.supplier_id||null, req.params.id, pb.cabang_id, pb.nama_supplier,
+           `Pembelian ${pb.nomor}`, pb.total, null, req.user.id])
+          .catch(e=>console.error('auto hutang_supplier:',e.message));
+      }
+    }
+
+    // 4. Update status
     await conn.query("UPDATE pembelian_barang SET status='diterima' WHERE id=?", [req.params.id]);
 
     await conn.commit();
+    const hutangMsg = (!pb.kas_akun_id && pb.total > 0) ? ' Hutang supplier otomatis tercatat.' : '';
     audit(req, 'approve', 'pembelian', req.params.id, pb.nomor, {total:pb.total, supplier:pb.nama_supplier, cabang_id:pb.cabang_id});
-    res.json({success:true, message:`Pembelian ${pb.nomor} diterima. Stok, pengeluaran otomatis tercatat.`});
+    res.json({success:true, message:`Pembelian ${pb.nomor} diterima. Stok, pengeluaran otomatis tercatat.${hutangMsg}`});
   } catch(e){ await conn.rollback(); res.status(500).json({success:false,message:e.message}); }
   finally { conn.release(); }
 });
