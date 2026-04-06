@@ -5546,6 +5546,229 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
       </div>
     </div>
 
+    <!-- ── HUTANG SUPPLIER ── -->
+    <div id="pg-hutang" class="content">
+      <div class="page-head">
+        <div class="page-head-left"><h2>💰 Hutang Supplier</h2><p>Kelola hutang ke supplier</p></div>
+        <button class="btn btn-primary" onclick="openModal('modal-hutang-add')">+ Tambah Hutang</button>
+      </div>
+      <div id="hutang-summary-badges" style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap"></div>
+      <div class="card">
+        <div class="card-head">
+          <div class="search-bar">
+            <select class="form-select" style="width:180px" id="hutang-cabang-filter" onchange="loadHutang()"><option value="">Semua Cabang</option></select>
+            <select class="form-select" style="width:140px" id="hutang-status-filter" onchange="loadHutang()">
+              <option value="">Semua Status</option>
+              <option value="belum_lunas">Belum Lunas</option>
+              <option value="lunas">Lunas</option>
+            </select>
+            <input type="text" class="search-input" placeholder="Cari supplier…" oninput="filterTable('tbl-hutang',this.value)">
+          </div>
+          <div id="hutang-summary" style="display:flex;gap:12px;font-size:13px"></div>
+        </div>
+        <div class="tbl-wrap"><table id="tbl-hutang">
+          <thead><tr>
+            <th>Supplier</th><th>Cabang</th><th>Keterangan</th>
+            <th style="text-align:right">Total</th><th style="text-align:right">Terbayar</th>
+            <th style="text-align:right">Sisa</th><th>Jatuh Tempo</th>
+            <th>Status</th><th style="text-align:center">Aksi</th>
+          </tr></thead>
+          <tbody id="hutang-body"><tr class="loading-row"><td colspan="9">Memuat…</td></tr></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ── SURAT JALAN ── -->
+    <div id="pg-surat-jalan" class="content">
+      <div class="page-head">
+        <div class="page-head-left"><h2>🚚 Surat Jalan</h2><p>Kelola pengiriman barang antar cabang</p></div>
+        <button class="btn btn-primary" onclick="openModal('modal-surat-jalan-add')">+ Buat Surat Jalan</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+        <select id="sj-status-filter" class="form-select" style="width:160px" onchange="loadSuratJalan()">
+          <option value="">Semua Status</option>
+          <option value="disiapkan">Disiapkan</option>
+          <option value="dikirim">Dikirim</option>
+          <option value="diterima">Diterima</option>
+          <option value="batal">Batal</option>
+        </select>
+        <select id="sj-cabang-filter" class="form-select" style="width:180px" onchange="loadSuratJalan()"><option value="">Semua Cabang</option></select>
+        <input type="date" id="sj-date-from" class="form-input" style="width:150px" onchange="loadSuratJalan()">
+        <span style="color:var(--muted)">s/d</span>
+        <input type="date" id="sj-date-to" class="form-input" style="width:150px" onchange="loadSuratJalan()">
+      </div>
+      <div class="card"><div class="tbl-wrap"><table id="tbl-surat-jalan">
+        <thead><tr>
+          <th>Nomor</th><th>Dari</th><th>Ke</th><th>Tanggal</th>
+          <th style="text-align:right">Items</th><th style="text-align:right">Total Qty</th>
+          <th>Status</th><th style="text-align:center">Aksi</th>
+        </tr></thead>
+        <tbody id="sj-body"><tr class="loading-row"><td colspan="8">Memuat…</td></tr></tbody>
+      </table></div></div>
+    </div>
+
+    <!-- ── NOTIFIKASI WA ── -->
+    <div id="pg-wa" class="content">
+      <div class="page-head">
+        <div class="page-head-left"><h2>📱 Notifikasi WhatsApp</h2><p>Gateway WA, log notifikasi, dan broadcast</p></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="openModal('modal-wa-send')">📤 Kirim Manual</button>
+          <button class="btn btn-outline" onclick="waGenerateAlerts()">🔔 Generate Alerts</button>
+        </div>
+      </div>
+      <!-- Settings Card -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-head"><h3>⚙️ Pengaturan Gateway</h3>
+          <button class="btn btn-primary btn-sm" onclick="saveWaSettings()">💾 Simpan</button>
+        </div>
+        <div style="padding:16px">
+          <div class="form-grid">
+            <div class="fg"><label class="form-label">Gateway URL</label><input id="wa-gateway-url" class="form-input" placeholder="https://api.wagateway.com"></div>
+            <div class="fg"><label class="form-label">API Key</label><input id="wa-api-key" class="form-input" placeholder="API key"></div>
+            <div class="fg"><label class="form-label">Status</label>
+              <select id="wa-aktif" class="form-select"><option value="1">Aktif</option><option value="0">Nonaktif</option></select>
+            </div>
+            <div class="fg"><label class="form-label">Threshold Stok Kritis</label><input type="number" id="wa-threshold-stok" class="form-input" placeholder="5"></div>
+            <div class="fg"><label class="form-label">Threshold Piutang (hari)</label><input type="number" id="wa-threshold-piutang" class="form-input" placeholder="7"></div>
+            <div class="fg"><label class="form-label">Threshold Hutang (hari)</label><input type="number" id="wa-threshold-hutang" class="form-input" placeholder="7"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Log Table -->
+      <div class="card">
+        <div class="card-head">
+          <h3>📋 Log Notifikasi</h3>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="waSendTest()">🧪 Send Test</button>
+            <button class="btn btn-ghost btn-sm" onclick="openModal('modal-wa-broadcast')">📢 Broadcast</button>
+          </div>
+        </div>
+        <div class="tbl-wrap"><table id="tbl-wa-log">
+          <thead><tr>
+            <th>Tujuan</th><th>Pesan</th><th>Tipe</th><th>Status</th><th>Waktu</th>
+          </tr></thead>
+          <tbody id="wa-log-body"><tr class="loading-row"><td colspan="5">Memuat…</td></tr></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ── PREDIKSI STOK ── -->
+    <div id="pg-prediksi-stok" class="content">
+      <div class="page-head">
+        <div class="page-head-left"><h2>📊 Prediksi Stok</h2><p>Prediksi kebutuhan stok berdasarkan velocity penjualan</p></div>
+      </div>
+      <!-- Stats -->
+      <div id="prediksi-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px"></div>
+      <!-- Filters -->
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+        <select id="ps-cabang-filter" class="form-select" style="width:200px" onchange="loadPrediksiStok()"><option value="">Semua Cabang</option></select>
+        <select id="ps-periode" class="form-select" style="width:140px" onchange="loadPrediksiStok()">
+          <option value="7">7 Hari</option>
+          <option value="14">14 Hari</option>
+          <option value="30" selected>30 Hari</option>
+        </select>
+      </div>
+      <!-- Tabs -->
+      <div class="tabs" style="margin-bottom:16px">
+        <button class="tab-btn active" onclick="switchPrediksiTab('velocity',this)">📈 Velocity</button>
+        <button class="tab-btn" onclick="switchPrediksiTab('reorder',this)">🛒 Reorder</button>
+      </div>
+      <!-- Velocity Table -->
+      <div id="ps-velocity-wrap" class="card">
+        <div class="tbl-wrap"><table id="tbl-prediksi-stok">
+          <thead><tr>
+            <th>Produk</th><th>SKU</th><th>Kategori</th>
+            <th style="text-align:right">Stok</th><th style="text-align:right">Avg/Hari</th>
+            <th style="text-align:right">Hari Tersisa</th><th>Status</th>
+          </tr></thead>
+          <tbody id="ps-body"><tr class="loading-row"><td colspan="7">Memuat…</td></tr></tbody>
+        </table></div>
+      </div>
+      <!-- Reorder Table -->
+      <div id="ps-reorder-wrap" class="card" style="display:none">
+        <div class="tbl-wrap"><table id="tbl-reorder">
+          <thead><tr>
+            <th>Supplier</th><th>Produk</th><th>SKU</th>
+            <th style="text-align:right">Stok</th><th style="text-align:right">Avg/Hari</th>
+            <th style="text-align:right">Reorder Qty</th>
+          </tr></thead>
+          <tbody id="ps-reorder-body"><tr class="loading-row"><td colspan="6">Memuat…</td></tr></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ── LAPORAN KEUANGAN ── -->
+    <div id="pg-laporan-keuangan" class="content">
+      <div class="page-head">
+        <div class="page-head-left"><h2>📊 Laporan Keuangan</h2><p>Neraca, Arus Kas, Aging Piutang, dan Ringkasan</p></div>
+      </div>
+      <!-- Tabs -->
+      <div class="tabs" style="margin-bottom:16px">
+        <button class="tab-btn active" onclick="switchLapKeuTab('neraca',this)">📋 Neraca</button>
+        <button class="tab-btn" onclick="switchLapKeuTab('arus-kas',this)">💰 Arus Kas</button>
+        <button class="tab-btn" onclick="switchLapKeuTab('aging',this)">⏰ Aging Piutang</button>
+        <button class="tab-btn" onclick="switchLapKeuTab('ringkasan',this)">📊 Ringkasan</button>
+      </div>
+      <!-- Date Filter -->
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+        <input type="month" id="lk-bulan" class="form-input" style="width:180px" onchange="loadLapKeuActive()">
+      </div>
+      <!-- Neraca -->
+      <div id="lk-neraca-wrap">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" id="lk-neraca-content">
+          <div class="card" style="padding:20px">
+            <h3 style="margin-bottom:16px;color:var(--brand)">Aset</h3>
+            <div id="lk-aset-list" style="font-size:14px"></div>
+            <div style="border-top:2px solid var(--border);margin-top:12px;padding-top:8px;font-weight:800;display:flex;justify-content:space-between" id="lk-total-aset">
+              <span>Total Aset</span><span>Rp 0</span>
+            </div>
+          </div>
+          <div>
+            <div class="card" style="padding:20px;margin-bottom:16px">
+              <h3 style="margin-bottom:16px;color:#D97706">Kewajiban</h3>
+              <div id="lk-kewajiban-list" style="font-size:14px"></div>
+              <div style="border-top:2px solid var(--border);margin-top:12px;padding-top:8px;font-weight:800;display:flex;justify-content:space-between" id="lk-total-kewajiban">
+                <span>Total Kewajiban</span><span>Rp 0</span>
+              </div>
+            </div>
+            <div class="card" style="padding:20px">
+              <h3 style="margin-bottom:16px;color:#059669">Ekuitas</h3>
+              <div id="lk-ekuitas-list" style="font-size:14px"></div>
+              <div style="border-top:2px solid var(--border);margin-top:12px;padding-top:8px;font-weight:800;display:flex;justify-content:space-between" id="lk-total-ekuitas">
+                <span>Total Ekuitas</span><span>Rp 0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Arus Kas -->
+      <div id="lk-arus-kas-wrap" style="display:none">
+        <div class="card" style="padding:20px">
+          <div id="lk-arus-kas-content" style="font-size:14px"></div>
+        </div>
+      </div>
+      <!-- Aging Piutang -->
+      <div id="lk-aging-wrap" style="display:none">
+        <div class="card"><div class="tbl-wrap"><table id="tbl-aging">
+          <thead><tr>
+            <th>Pelanggan</th><th style="text-align:right">Current</th>
+            <th style="text-align:right">1-30 hari</th><th style="text-align:right">31-60 hari</th>
+            <th style="text-align:right">61-90 hari</th><th style="text-align:right">&gt;90 hari</th>
+            <th style="text-align:right">Total</th>
+          </tr></thead>
+          <tbody id="aging-body"><tr class="loading-row"><td colspan="7">Memuat…</td></tr></tbody>
+        </table></div></div>
+      </div>
+      <!-- Ringkasan -->
+      <div id="lk-ringkasan-wrap" style="display:none">
+        <div id="lk-ringkasan-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px"></div>
+        <div class="card" style="padding:20px">
+          <h3 style="margin-bottom:12px">Perbandingan vs Bulan Lalu</h3>
+          <div id="lk-ringkasan-compare" style="font-size:14px"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── DEVELOPER PAGE ── -->
     <div id="pg-developer" class="content">
       <div class="page-head">
@@ -6050,6 +6273,113 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModal('modal-hak-akses')">Batal</button>
       <button class="btn btn-primary" onclick="saveHakAkses()">💾 Simpan Hak Akses</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL TAMBAH HUTANG -->
+<div class="modal-bg" id="modal-hutang-add">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-head"><h3 id="hutang-modal-title">Tambah Hutang</h3><button class="modal-close" onclick="closeModal('modal-hutang-add')">&#10005;</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="hutang-id">
+      <div class="form-grid">
+        <div class="fg full"><label class="form-label">Nama Supplier</label><input id="hutang-supplier" class="form-input" placeholder="Nama supplier"></div>
+        <div class="fg"><label class="form-label">Cabang</label>
+          <select id="hutang-cabang" class="form-select"><option value="">-- Pilih --</option></select>
+        </div>
+        <div class="fg full"><label class="form-label">Keterangan</label><input id="hutang-ket" class="form-input" placeholder="PO #001 atau keterangan lain"></div>
+        <div class="fg"><label class="form-label">Total Hutang (Rp)</label><input type="number" id="hutang-total" class="form-input" placeholder="0"></div>
+        <div class="fg"><label class="form-label">Jatuh Tempo</label><input type="date" id="hutang-jatuh-tempo" class="form-input"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-hutang-add')">Batal</button>
+      <button class="btn btn-primary" onclick="saveHutang()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL BAYAR HUTANG -->
+<div class="modal-bg" id="modal-hutang-bayar">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head"><h3>💰 Pembayaran Hutang</h3><button class="modal-close" onclick="closeModal('modal-hutang-bayar')">&#10005;</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="bayar-hutang-id">
+      <div id="bayar-hutang-info" style="background:var(--surface-2);border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px"></div>
+      <div class="form-grid">
+        <div class="fg full"><label class="form-label">Jumlah Bayar (Rp)</label><input type="number" id="bayar-hutang-jumlah" class="form-input" placeholder="0"></div>
+        <div class="fg full"><label class="form-label">Tanggal Bayar</label><input type="date" id="bayar-hutang-tgl" class="form-input"></div>
+        <div class="fg full"><label class="form-label">Catatan</label><input id="bayar-hutang-catatan" class="form-input" placeholder="Transfer BCA, dll"></div>
+      </div>
+      <div id="riwayat-bayar-hutang" style="margin-top:12px"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-hutang-bayar')">Tutup</button>
+      <button class="btn btn-primary" onclick="simpanBayarHutang()">💾 Simpan Pembayaran</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SURAT JALAN -->
+<div class="modal-bg" id="modal-surat-jalan-add">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-head"><h3>🚚 Buat Surat Jalan</h3><button class="modal-close" onclick="closeModal('modal-surat-jalan-add')">&#10005;</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="fg"><label class="form-label">Dari Cabang</label><select id="sj-dari-cabang" class="form-select"></select></div>
+        <div class="fg"><label class="form-label">Ke Cabang</label><select id="sj-ke-cabang" class="form-select"></select></div>
+        <div class="fg"><label class="form-label">Tanggal</label><input type="date" id="sj-tanggal" class="form-input"></div>
+        <div class="fg full"><label class="form-label">Catatan</label><input id="sj-catatan" class="form-input" placeholder="Catatan opsional"></div>
+      </div>
+      <div style="font-weight:700;margin:16px 0 8px">Item Barang</div>
+      <div id="sj-items"></div>
+      <button class="btn btn-ghost btn-sm" onclick="sjAddItem()" style="margin-top:8px">+ Tambah Item</button>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-surat-jalan-add')">Batal</button>
+      <button class="btn btn-primary" onclick="saveSuratJalan()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL WA SEND -->
+<div class="modal-bg" id="modal-wa-send">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head"><h3>📤 Kirim WA Manual</h3><button class="modal-close" onclick="closeModal('modal-wa-send')">&#10005;</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="fg full"><label class="form-label">Nomor Tujuan</label><input id="wa-send-nomor" class="form-input" placeholder="628xxxx"></div>
+        <div class="fg full"><label class="form-label">Pesan</label><textarea id="wa-send-pesan" class="form-input" rows="4" placeholder="Isi pesan..."></textarea></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-wa-send')">Batal</button>
+      <button class="btn btn-primary" onclick="waSendManual()">📤 Kirim</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL WA BROADCAST -->
+<div class="modal-bg" id="modal-wa-broadcast">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-head"><h3>📢 Broadcast WA</h3><button class="modal-close" onclick="closeModal('modal-wa-broadcast')">&#10005;</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="fg full"><label class="form-label">Target</label>
+          <select id="wa-bc-target" class="form-select">
+            <option value="all_staff">Semua Staff</option>
+            <option value="kepala_cabang">Kepala Cabang</option>
+            <option value="kasir">Kasir</option>
+            <option value="manajer">Manajer</option>
+          </select>
+        </div>
+        <div class="fg full"><label class="form-label">Pesan Broadcast</label><textarea id="wa-bc-pesan" class="form-input" rows="5" placeholder="Isi broadcast..."></textarea></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-wa-broadcast')">Batal</button>
+      <button class="btn btn-primary" onclick="waBroadcast()">📢 Kirim Broadcast</button>
     </div>
   </div>
 </div>
@@ -8282,13 +8612,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ── NAVIGATION ──────────────────────────────────
 const NAV_CONFIG = {
-  owner:            [['dashboard','🏠','Dashboard'],['users','👥','Manajemen Staff'],['cabang','🏬','Manajemen Cabang'],['pos-produk','🛍️','Manajemen Produk'],['pos-stok','📦','Manajemen Stok'],['pos-log','📋','Log Barang'],['transfer-barang','🔄','Transfer Barang'],['pembelian','🛒','Pembelian Barang'],['retur','🔄','Retur Barang'],['stock-opname','📋','Stock Opname'],['persediaan','📦','Persediaan'],['poin','🎯','Daftar Poin'],['mgmt-poin','🎯','Management Poin'],['deadstock','📊','Deadstock'],['deadstock-mgmt','⚠️','Mgmt Deadstock'],['aset','🏭','Manajemen Aset'],['invoice','🧾','Invoice'],['piutang','💳','Piutang'],['supplier','🏭','Supplier'],['reseller','🏪','Reseller'],['entitas','🏢','Entitas Bisnis'],['crm','🤝','CRM'],['target','🎯','Target Sales'],['forecast','📈','Forecast'],['kas','💳','Kas & Bank'],['pemasukan','💰','Pemasukan'],['pengeluaran','💸','Pengeluaran'],['karyawan','👤','Data Karyawan'],['absensi','🕐','Absensi Kerjoo'],['absensi-portal','📱','Absensi Portal'],['payroll','💵','Payroll Gudang'],['payroll-toko','🏪','Payroll Toko'],['payroll-spv','👔','Payroll SPV'],['konten','🎬','Konten Harian'],['arsip','🗂️','Arsip'],['request','📋','Request Barang'],['request-produk','🗃️','Master Produk Request'],['kasir','🖥️','Kasir POS'],['pos-setting','⚙️','Setting POS'],['history-trx','📋','History Transaksi'],['monitoring-omzet','📊','Monitoring Omzet'],['lap-per-kasir','👤','Omzet Per Kasir'],['monitoring-keuntungan','💰','Keuntungan Cabang'],['laba-rugi','📊','Laporan Laba Rugi'],['lap-marketplace','🏪','Biaya Marketplace'],['monitoring-modal','💰','Monitoring Modal'],['monitoring-deadstock','🐢','Monitoring Deadstock'],['kpi','📈','KPI Karyawan'],['target-staff','🎯','Target Staff'],['bagi-hasil','💰','Bagi Hasil Manajer'],['promo','🏷️','Promo & Voucher'],['member','👥','Member Loyalty'],['audit-log','📝','Audit Log'],['developer','🛠️','Developer']],
-  manajer:          [['dashboard','🏠','Dashboard'],['users','👥','Manajemen Staff'],['cabang','🏬','Manajemen Cabang'],['deadstock','📊','Deadstock'],['aset','🏭','Manajemen Aset'],['crm','🤝','CRM'],['invoice','🧾','Invoice'],['piutang','💳','Piutang'],['supplier','🏭','Supplier'],['reseller','🏪','Reseller'],['poin','🎯','Daftar Poin'],['mgmt-poin','🎯','Management Poin'],['transfer-barang','🔄','Transfer Barang'],['stock-opname','📋','Stock Opname'],['persediaan','📦','Persediaan'],['pengeluaran','💸','Pengeluaran'],['karyawan','👤','Data Karyawan'],['absensi','🕐','Absensi Kerjoo'],['absensi-portal','📱','Absensi Portal'],['payroll','💵','Payroll Gudang'],['payroll-toko','🏪','Payroll Toko'],['konten','🎬','Konten Harian'],['arsip','🗂️','Arsip'],['pos-setting','⚙️','Setting POS'],['history-trx','📋','History Transaksi'],['monitoring-omzet','📊','Monitoring Omzet'],['lap-per-kasir','👤','Omzet Per Kasir'],['monitoring-keuntungan','💰','Keuntungan Cabang'],['laba-rugi','📊','Laporan Laba Rugi'],['lap-marketplace','🏪','Biaya Marketplace'],['monitoring-modal','💰','Monitoring Modal'],['monitoring-deadstock','🐢','Monitoring Deadstock'],['kpi','📈','KPI Karyawan']],
+  owner:            [['dashboard','🏠','Dashboard'],['users','👥','Manajemen Staff'],['cabang','🏬','Manajemen Cabang'],['pos-produk','🛍️','Manajemen Produk'],['pos-stok','📦','Manajemen Stok'],['pos-log','📋','Log Barang'],['transfer-barang','🔄','Transfer Barang'],['pembelian','🛒','Pembelian Barang'],['retur','🔄','Retur Barang'],['stock-opname','📋','Stock Opname'],['persediaan','📦','Persediaan'],['poin','🎯','Daftar Poin'],['mgmt-poin','🎯','Management Poin'],['deadstock','📊','Deadstock'],['deadstock-mgmt','⚠️','Mgmt Deadstock'],['aset','🏭','Manajemen Aset'],['invoice','🧾','Invoice'],['piutang','💳','Piutang'],['hutang','💰','Hutang Supplier'],['supplier','🏭','Supplier'],['reseller','🏪','Reseller'],['entitas','🏢','Entitas Bisnis'],['crm','🤝','CRM'],['target','🎯','Target Sales'],['forecast','📈','Forecast'],['kas','💳','Kas & Bank'],['pemasukan','💰','Pemasukan'],['pengeluaran','💸','Pengeluaran'],['karyawan','👤','Data Karyawan'],['absensi','🕐','Absensi Kerjoo'],['absensi-portal','📱','Absensi Portal'],['payroll','💵','Payroll Gudang'],['payroll-toko','🏪','Payroll Toko'],['payroll-spv','👔','Payroll SPV'],['konten','🎬','Konten Harian'],['arsip','🗂️','Arsip'],['request','📋','Request Barang'],['request-produk','🗃️','Master Produk Request'],['surat-jalan','🚚','Surat Jalan'],['kasir','🖥️','Kasir POS'],['pos-setting','⚙️','Setting POS'],['history-trx','📋','History Transaksi'],['monitoring-omzet','📊','Monitoring Omzet'],['lap-per-kasir','👤','Omzet Per Kasir'],['monitoring-keuntungan','💰','Keuntungan Cabang'],['laba-rugi','📊','Laporan Laba Rugi'],['lap-marketplace','🏪','Biaya Marketplace'],['monitoring-modal','💰','Monitoring Modal'],['monitoring-deadstock','🐢','Monitoring Deadstock'],['prediksi-stok','📊','Prediksi Stok'],['laporan-keuangan','📊','Laporan Keuangan'],['kpi','📈','KPI Karyawan'],['target-staff','🎯','Target Staff'],['bagi-hasil','💰','Bagi Hasil Manajer'],['promo','🏷️','Promo & Voucher'],['member','👥','Member Loyalty'],['wa','📱','Notifikasi WA'],['audit-log','📝','Audit Log'],['developer','🛠️','Developer']],
+  manajer:          [['dashboard','🏠','Dashboard'],['users','👥','Manajemen Staff'],['cabang','🏬','Manajemen Cabang'],['deadstock','📊','Deadstock'],['aset','🏭','Manajemen Aset'],['crm','🤝','CRM'],['invoice','🧾','Invoice'],['piutang','💳','Piutang'],['hutang','💰','Hutang Supplier'],['supplier','🏭','Supplier'],['reseller','🏪','Reseller'],['poin','🎯','Daftar Poin'],['mgmt-poin','🎯','Management Poin'],['transfer-barang','🔄','Transfer Barang'],['stock-opname','📋','Stock Opname'],['persediaan','📦','Persediaan'],['pengeluaran','💸','Pengeluaran'],['karyawan','👤','Data Karyawan'],['absensi','🕐','Absensi Kerjoo'],['absensi-portal','📱','Absensi Portal'],['payroll','💵','Payroll Gudang'],['payroll-toko','🏪','Payroll Toko'],['konten','🎬','Konten Harian'],['arsip','🗂️','Arsip'],['surat-jalan','🚚','Surat Jalan'],['pos-setting','⚙️','Setting POS'],['history-trx','📋','History Transaksi'],['monitoring-omzet','📊','Monitoring Omzet'],['lap-per-kasir','👤','Omzet Per Kasir'],['monitoring-keuntungan','💰','Keuntungan Cabang'],['laba-rugi','📊','Laporan Laba Rugi'],['lap-marketplace','🏪','Biaya Marketplace'],['monitoring-modal','💰','Monitoring Modal'],['monitoring-deadstock','🐢','Monitoring Deadstock'],['prediksi-stok','📊','Prediksi Stok'],['kpi','📈','KPI Karyawan']],
   manajer_area:     [['dashboard','🏠','Dashboard'],['bagi-hasil','💰','Bagi Hasil Saya'],['history-trx','📋','History Transaksi'],['monitoring-omzet','📊','Monitoring Omzet'],['lap-per-kasir','👤','Omzet Per Kasir'],['monitoring-keuntungan','💰','Keuntungan Cabang'],['laba-rugi','📊','Laporan Laba Rugi'],['pos-setting','⚙️','Setting POS']],
-  head_operational: [['dashboard','🏠','Dashboard'],['users','👥','Manajemen Staff'],['cabang','🏬','Manajemen Cabang'],['pos-produk','🛍️','Manajemen Produk'],['pos-stok','📦','Manajemen Stok'],['pos-log','📋','Log Barang'],['transfer-barang','🔄','Transfer Barang'],['pembelian','🛒','Pembelian Barang'],['stock-opname','📋','Stock Opname'],['persediaan','📦','Persediaan'],['poin','🎯','Daftar Poin'],['mgmt-poin','🎯','Management Poin'],['deadstock','📊','Deadstock'],['deadstock-mgmt','⚠️','Mgmt Deadstock'],['aset','🏭','Manajemen Aset'],['invoice','🧾','Invoice'],['piutang','💳','Piutang'],['supplier','🏭','Supplier'],['reseller','🏪','Reseller'],['entitas','🏢','Entitas Bisnis'],['crm','🤝','CRM'],['target','🎯','Target Sales'],['forecast','📈','Forecast'],['kas','💳','Kas & Bank'],['pemasukan','💰','Pemasukan'],['pengeluaran','💸','Pengeluaran'],['karyawan','👤','Data Karyawan'],['absensi','🕐','Absensi Kerjoo'],['absensi-portal','📱','Absensi Portal'],['payroll','💵','Payroll Gudang'],['payroll-toko','🏪','Payroll Toko'],['payroll-spv','👔','Payroll SPV'],['konten','🎬','Konten Harian'],['arsip','🗂️','Arsip'],['request','📋','Request Barang'],['request-produk','🗃️','Master Produk Request'],['kasir','🖥️','Kasir POS'],['pos-setting','⚙️','Setting POS'],['history-trx','📋','History Transaksi'],['monitoring-omzet','📊','Monitoring Omzet'],['lap-per-kasir','👤','Omzet Per Kasir'],['monitoring-keuntungan','💰','Keuntungan Cabang'],['lap-marketplace','🏪','Biaya Marketplace'],['monitoring-modal','💰','Monitoring Modal'],['monitoring-deadstock','🐢','Monitoring Deadstock']],
-  admin_pusat:      [['dashboard','🏠','Dashboard'],['users','👥','Manajemen Staff'],['cabang','🏬','Manajemen Cabang'],['pos-produk','🛍️','Manajemen Produk'],['pos-stok','📦','Manajemen Stok'],['stock-opname','📋','Stock Opname'],['persediaan','📦','Persediaan'],['aset','🏭','Manajemen Aset'],['invoice','🧾','Invoice'],['piutang','💳','Piutang'],['forecast','📈','Forecast'],['kas','💳','Kas & Bank'],['pemasukan','💰','Pemasukan'],['pengeluaran','💸','Pengeluaran'],['absensi','🕐','Absensi Kerjoo'],['absensi-portal','📱','Absensi Portal'],['arsip','🗂️','Arsip'],['request','📋','Request Barang'],['pos-setting','⚙️','Setting POS']],
-  spv_area:         [['dashboard','🏠','Dashboard'],['users','👥','Manajemen Staff'],['cabang','🏬','Manajemen Cabang'],['pos-stok','📦','Manajemen Stok'],['stock-opname','📋','Stock Opname'],['persediaan','📦','Persediaan'],['deadstock','📊','Deadstock'],['poin','🎯','Daftar Poin'],['mgmt-poin','🎯','Management Poin'],['pengeluaran','💸','Pengeluaran'],['pemasukan','💰','Pemasukan'],['target','🎯','Target Sales'],['forecast','📈','Forecast'],['absensi','🕐','Absensi Kerjoo'],['absensi-portal','📱','Absensi Portal'],['payroll-toko','🏪','Payroll Toko'],['payroll-spv','👔','Payroll SPV'],['konten','🎬','Konten Harian'],['arsip','🗂️','Arsip'],['request','📋','Request Barang'],['pos-setting','⚙️','Setting POS'],['history-trx','📋','History Transaksi'],['monitoring-omzet','📊','Monitoring Omzet'],['monitoring-keuntungan','💰','Keuntungan Cabang'],['monitoring-modal','💰','Monitoring Modal'],['monitoring-deadstock','🐢','Monitoring Deadstock']],
-  finance:          [['dashboard','🏠','Dashboard'],['invoice','🧾','Invoice'],['piutang','💳','Piutang'],['kas','💳','Kas & Bank'],['pemasukan','💰','Pemasukan'],['pengeluaran','💸','Pengeluaran'],['laba-rugi','📊','Laporan Laba Rugi'],['lap-marketplace','🏪','Biaya Marketplace'],['pos-setting','⚙️','Setting POS']],
+  head_operational: [['dashboard','🏠','Dashboard'],['users','👥','Manajemen Staff'],['cabang','🏬','Manajemen Cabang'],['pos-produk','🛍️','Manajemen Produk'],['pos-stok','📦','Manajemen Stok'],['pos-log','📋','Log Barang'],['transfer-barang','🔄','Transfer Barang'],['pembelian','🛒','Pembelian Barang'],['stock-opname','📋','Stock Opname'],['persediaan','📦','Persediaan'],['poin','🎯','Daftar Poin'],['mgmt-poin','🎯','Management Poin'],['deadstock','📊','Deadstock'],['deadstock-mgmt','⚠️','Mgmt Deadstock'],['aset','🏭','Manajemen Aset'],['invoice','🧾','Invoice'],['piutang','💳','Piutang'],['hutang','💰','Hutang Supplier'],['supplier','🏭','Supplier'],['reseller','🏪','Reseller'],['entitas','🏢','Entitas Bisnis'],['crm','🤝','CRM'],['target','🎯','Target Sales'],['forecast','📈','Forecast'],['kas','💳','Kas & Bank'],['pemasukan','💰','Pemasukan'],['pengeluaran','💸','Pengeluaran'],['karyawan','👤','Data Karyawan'],['absensi','🕐','Absensi Kerjoo'],['absensi-portal','📱','Absensi Portal'],['payroll','💵','Payroll Gudang'],['payroll-toko','🏪','Payroll Toko'],['payroll-spv','👔','Payroll SPV'],['konten','🎬','Konten Harian'],['arsip','🗂️','Arsip'],['request','📋','Request Barang'],['request-produk','🗃️','Master Produk Request'],['surat-jalan','🚚','Surat Jalan'],['kasir','🖥️','Kasir POS'],['pos-setting','⚙️','Setting POS'],['history-trx','📋','History Transaksi'],['monitoring-omzet','📊','Monitoring Omzet'],['lap-per-kasir','👤','Omzet Per Kasir'],['monitoring-keuntungan','💰','Keuntungan Cabang'],['lap-marketplace','🏪','Biaya Marketplace'],['monitoring-modal','💰','Monitoring Modal'],['monitoring-deadstock','🐢','Monitoring Deadstock'],['prediksi-stok','📊','Prediksi Stok']],
+  admin_pusat:      [['dashboard','🏠','Dashboard'],['users','👥','Manajemen Staff'],['cabang','🏬','Manajemen Cabang'],['pos-produk','🛍️','Manajemen Produk'],['pos-stok','📦','Manajemen Stok'],['stock-opname','📋','Stock Opname'],['persediaan','📦','Persediaan'],['aset','🏭','Manajemen Aset'],['invoice','🧾','Invoice'],['piutang','💳','Piutang'],['hutang','💰','Hutang Supplier'],['forecast','📈','Forecast'],['kas','💳','Kas & Bank'],['pemasukan','💰','Pemasukan'],['pengeluaran','💸','Pengeluaran'],['absensi','🕐','Absensi Kerjoo'],['absensi-portal','📱','Absensi Portal'],['arsip','🗂️','Arsip'],['request','📋','Request Barang'],['surat-jalan','🚚','Surat Jalan'],['wa','📱','Notifikasi WA'],['prediksi-stok','📊','Prediksi Stok'],['laporan-keuangan','📊','Laporan Keuangan'],['pos-setting','⚙️','Setting POS']],
+  spv_area:         [['dashboard','🏠','Dashboard'],['users','👥','Manajemen Staff'],['cabang','🏬','Manajemen Cabang'],['pos-stok','📦','Manajemen Stok'],['stock-opname','📋','Stock Opname'],['persediaan','📦','Persediaan'],['deadstock','📊','Deadstock'],['poin','🎯','Daftar Poin'],['mgmt-poin','🎯','Management Poin'],['pengeluaran','💸','Pengeluaran'],['pemasukan','💰','Pemasukan'],['target','🎯','Target Sales'],['forecast','📈','Forecast'],['absensi','🕐','Absensi Kerjoo'],['absensi-portal','📱','Absensi Portal'],['payroll-toko','🏪','Payroll Toko'],['payroll-spv','👔','Payroll SPV'],['konten','🎬','Konten Harian'],['arsip','🗂️','Arsip'],['request','📋','Request Barang'],['pos-setting','⚙️','Setting POS'],['history-trx','📋','History Transaksi'],['monitoring-omzet','📊','Monitoring Omzet'],['monitoring-keuntungan','💰','Keuntungan Cabang'],['monitoring-modal','💰','Monitoring Modal'],['monitoring-deadstock','🐢','Monitoring Deadstock'],['prediksi-stok','📊','Prediksi Stok']],
+  finance:          [['dashboard','🏠','Dashboard'],['invoice','🧾','Invoice'],['piutang','💳','Piutang'],['hutang','💰','Hutang Supplier'],['kas','💳','Kas & Bank'],['pemasukan','💰','Pemasukan'],['pengeluaran','💸','Pengeluaran'],['laba-rugi','📊','Laporan Laba Rugi'],['lap-marketplace','🏪','Biaya Marketplace'],['laporan-keuangan','📊','Laporan Keuangan'],['pos-setting','⚙️','Setting POS']],
   kepala_cabang:    [['dashboard','🏠','Dashboard'],['pos-stok','📦','Manajemen Stok'],['stock-opname','📋','Stock Opname'],['persediaan','📦','Persediaan'],['deadstock','📊','Deadstock'],['poin','🎯','Daftar Poin'],['mgmt-poin','🎯','Management Poin'],['kasir','🖥️','Kasir POS'],['pos-setting','⚙️','Setting POS'],['target-saya','🎯','Target Omzet'],['history-trx','📋','History Transaksi'],['lap-penjualan','📈','Laporan Penjualan'],['lap-per-kasir','👤','Omzet Per Kasir'],['lap-terlaris','🔥','Barang Terlaris'],['request','📋','Request Barang']],
   sales:            [['dashboard','🏠','Dashboard'],['kasir','🖥️','Kasir POS'],['invoice','🧾','Invoice'],['reseller','🏪','Reseller'],['entitas','🏢','Entitas Bisnis'],['crm','🤝','CRM'],['target','🎯','Target Sales'],['arsip','🗂️','Arsip'],['pos-setting','⚙️','Setting POS'],['history-trx','📋','History Transaksi'],['lap-penjualan','📈','Laporan Penjualan'],['lap-terlaris','🔥','Barang Terlaris']],
   kasir:            [['dashboard','🏠','Dashboard'],['kasir','🖥️','Kasir POS'],['pos-setting','⚙️','Setting POS'],['target-saya','🎯','Target Omzet'],['poin','🎯','Daftar Poin'],['mgmt-poin','🎯','Management Poin'],['poin-saya','💰','Poin Kamu Bulan Ini'],['poin-history','📅','History Poin'],['history-trx','📋','History Transaksi'],['lap-penjualan','📈','Laporan Penjualan'],['lap-terlaris','🔥','Barang Terlaris'],['lap-kategori','🏷️','Kategori Terlaris'],['request','📋','Request Barang']],
@@ -8337,16 +8667,16 @@ function buildNav() {
   const isKasirRole = ['kasir','kasir_sales','vaporista'].includes(USER.role);
   const groups = {
     master    : { label: isKasirRole ? 'Komisi' : 'Management', pages:['users','cabang','pos-produk','pos-stok','pembelian','persediaan','supplier','poin','mgmt-poin','poin-saya','poin-history','target-saya'] },
-    operasional: { label:'Operasional', pages:['pos-log','transfer-barang','retur','stock-opname','deadstock','deadstock-mgmt','aset','piutang'] },
+    operasional: { label:'Operasional', pages:['pos-log','transfer-barang','retur','stock-opname','deadstock','deadstock-mgmt','aset','piutang','surat-jalan'] },
     sales     : { label:'Sales',  pages:['crm','invoice','reseller','entitas','target','forecast','promo','member'] },
-    keuangan  : { label:'Keuangan',     pages:['kas','pemasukan','pengeluaran'] },
+    keuangan  : { label:'Keuangan',     pages:['kas','pemasukan','pengeluaran','hutang'] },
     sdm       : { label:'SDM',          pages:['karyawan','absensi','absensi-portal','payroll','payroll-toko','payroll-spv'] },
     konten    : { label:'Konten',       pages:['konten'] },
     lainnya   : { label:'Lainnya',      pages:['arsip','request','request-produk'] },
     pos       : { label:'POS Kasir',    pages:['kasir','pos-setting'] },
     laporan_kasir: { label:'Laporan',   pages:['history-trx','lap-penjualan','lap-terlaris','lap-kategori'] },
-    monitoring    : { label:'Monitoring', pages:['history-trx','monitoring-omzet','lap-per-kasir','monitoring-keuntungan','lap-marketplace','monitoring-modal','monitoring-deadstock','target-staff','bagi-hasil'] },
-    dev           : { label:'Developer', pages:['developer','audit-log'] }
+    monitoring    : { label:'Monitoring', pages:['history-trx','monitoring-omzet','lap-per-kasir','monitoring-keuntungan','lap-marketplace','monitoring-modal','monitoring-deadstock','target-staff','bagi-hasil','prediksi-stok','laporan-keuangan','laba-rugi'] },
+    dev           : { label:'Developer', pages:['developer','audit-log','wa'] }
   };
   let html = '';
   const dashItem = items.find(i => i[0]==='dashboard');
@@ -8647,16 +8977,16 @@ function appBuildMenuList() {
   const isKasirRole = ['kasir','kasir_sales','vaporista'].includes(USER.role);
   const groups = {
     master    : { label: isKasirRole ? 'Komisi' : 'Management', pages:['users','cabang','pos-produk','pos-stok','pembelian','persediaan','supplier','poin','mgmt-poin','poin-saya','poin-history','target-saya'] },
-    operasional: { label:'Operasional', pages:['pos-log','transfer-barang','retur','stock-opname','deadstock','deadstock-mgmt','aset','piutang'] },
+    operasional: { label:'Operasional', pages:['pos-log','transfer-barang','retur','stock-opname','deadstock','deadstock-mgmt','aset','piutang','surat-jalan'] },
     sales     : { label:'Sales',  pages:['crm','invoice','reseller','entitas','target','forecast','promo','member'] },
-    keuangan  : { label:'Keuangan', pages:['kas','pemasukan','pengeluaran'] },
+    keuangan  : { label:'Keuangan', pages:['kas','pemasukan','pengeluaran','hutang'] },
     sdm       : { label:'SDM', pages:['karyawan','absensi','absensi-portal','payroll','payroll-toko','payroll-spv'] },
     konten    : { label:'Konten', pages:['konten'] },
     lainnya   : { label:'Lainnya', pages:['arsip','request','request-produk'] },
     pos       : { label:'POS', pages:['kasir','pos-setting'] },
     laporan   : { label:'Laporan', pages:['history-trx','lap-penjualan','lap-terlaris','lap-kategori'] },
-    monitoring: { label:'Monitoring', pages:['history-trx','monitoring-omzet','lap-per-kasir','monitoring-keuntungan','laba-rugi','lap-marketplace','monitoring-modal','monitoring-deadstock','target-staff','bagi-hasil'] },
-    dev       : { label:'Developer', pages:['developer','audit-log'] }
+    monitoring: { label:'Monitoring', pages:['history-trx','monitoring-omzet','lap-per-kasir','monitoring-keuntungan','laba-rugi','lap-marketplace','monitoring-modal','monitoring-deadstock','target-staff','bagi-hasil','prediksi-stok','laporan-keuangan'] },
+    dev       : { label:'Developer', pages:['developer','audit-log','wa'] }
   };
   let html = '';
   Object.entries(groups).forEach(([key, grp]) => {
@@ -9193,6 +9523,11 @@ function navTo(pgId) {
   if (pgId==='pg-member')                initMemberPage();
   if (pgId==='pg-audit-log')             initAuditLog();
   if (pgId==='pg-developer')             initDeveloper();
+  if (pgId==='pg-hutang')               initHutang();
+  if (pgId==='pg-surat-jalan')          initSuratJalan();
+  if (pgId==='pg-wa')                   initWa();
+  if (pgId==='pg-prediksi-stok')        initPrediksiStok();
+  if (pgId==='pg-laporan-keuangan')     initLapKeu();
   if (pgId==='pg-request-quick')         initRequestQuick();
   if (pgId==='pg-upload-quick')          initUploadQuick();
   // Apply permission gating setelah halaman dimuat

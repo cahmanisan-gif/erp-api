@@ -77,6 +77,7 @@ app.use('/api/prediksi-stok', require('./routes/prediksi-stok'));
 app.use('/api/surat-jalan', require('./routes/surat-jalan'));
 app.use('/api/wa',           require('./routes/wa'));
 app.use('/api/laporan-keuangan', require('./routes/laporan-keuangan'));
+app.use('/api/backup',           require('./routes/backup'));
 
 app.get('/api/ping', (req, res) => res.json({ success:true, message:'Server Raja Vapor aktif!' }));
 

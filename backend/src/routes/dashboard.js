@@ -365,7 +365,7 @@ router.get('/sales', auth(), async (req, res) => {
   }
 });
 
-// GET /api/dashboard/backups — status backup
+// GET /api/dashboard/backups — legacy redirect to /api/backup/status
 router.get('/backups', auth(['owner','admin_pusat']), async (req, res) => {
   try {
     const [logs] = await db.query('SELECT * FROM backup_log ORDER BY created_at DESC LIMIT 10');
@@ -382,12 +382,13 @@ router.get('/backups', auth(['owner','admin_pusat']), async (req, res) => {
   } catch(e) { res.status(500).json({success:false,message:e.message}); }
 });
 
-// POST /api/dashboard/backup-now — manual backup trigger
+// POST /api/dashboard/backup-now — legacy, still works
 router.post('/backup-now', auth(['owner']), async (req, res) => {
   try {
     const { execSync } = require('child_process');
-    execSync('/bin/bash /var/www/rajavavapor/backup.sh', {timeout:60000});
-    res.json({success:true, message:'Backup selesai!'});
+    execSync('/bin/bash /var/www/rajavavapor/backup.sh', {timeout:120000});
+    const [latest] = await db.query('SELECT * FROM backup_log ORDER BY id DESC LIMIT 1');
+    res.json({success:true, message:'Backup selesai!', data: latest[0] || null});
   } catch(e) { res.status(500).json({success:false, message:'Backup gagal: '+e.message}); }
 });
 
