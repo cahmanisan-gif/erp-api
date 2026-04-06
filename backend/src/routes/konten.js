@@ -353,6 +353,21 @@ router.post('/upload', auth(), upload.single('video'), async (req, res) => {
       return res.status(400).json({success:false, message:'Sudah ada konten yang diupload untuk tanggal ini.'});
     }
 
+    // Auto-compress video ke 480p ~5MB (hemat 80% disk)
+    const compressedPath = file.path.replace(/\.[^/.]+$/, '_compressed.mp4');
+    try {
+      execSync(`ffmpeg -i "${file.path}" -vf "scale=-2:480" -c:v libx264 -preset fast -crf 28 -c:a aac -b:a 64k -movflags +faststart "${compressedPath}" -y 2>/dev/null`, {timeout:60000});
+      if (fs.existsSync(compressedPath) && fs.statSync(compressedPath).size > 1024) {
+        fs.unlinkSync(file.path);
+        fs.renameSync(compressedPath, file.path);
+        videoMeta.compressed = true;
+        videoMeta.compressed_size_kb = Math.round(fs.statSync(file.path).size / 1024);
+      }
+    } catch(compErr) {
+      if (fs.existsSync(compressedPath)) try { fs.unlinkSync(compressedPath); } catch(_) {}
+      console.error('Compress video skip:', compErr.message);
+    }
+
     const bulan = tanggal.slice(0,7);
     await db.query(
       `INSERT INTO konten_upload
