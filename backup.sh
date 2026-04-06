@@ -29,8 +29,8 @@ if [ $? -eq 0 ] && [ -s "${BACKUP_DIR}/${FILENAME}" ]; then
     VALUES ('${FILENAME}', '${SIZE_HUMAN}', 'success', 'Backup completed successfully — ${SIZE_BYTES} bytes');
   " 2>/dev/null
 
-  # Auto-upload to Google Drive if configured
-  if [ -f /var/www/rajavavapor/backend/.env ] && grep -q "GDRIVE_SERVICE_ACCOUNT_JSON" /var/www/rajavavapor/backend/.env 2>/dev/null; then
+  # Auto-upload to Google Drive if configured (uncommented var, not just comment)
+  if [ -f /var/www/rajavavapor/backend/.env ] && grep -q "^GDRIVE_SERVICE_ACCOUNT_JSON=" /var/www/rajavavapor/backend/.env 2>/dev/null; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Triggering Google Drive upload..." >> "$LOG_FILE"
     cd /var/www/rajavavapor && node gdrive-upload.js >> "$LOG_FILE" 2>&1
   else

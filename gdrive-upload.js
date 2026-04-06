@@ -19,8 +19,12 @@
 const path = require('path');
 const fs   = require('fs');
 
+// Resolve modules from backend/node_modules (script lives in project root)
+const BACKEND_DIR = path.join(__dirname, 'backend');
+module.paths.unshift(path.join(BACKEND_DIR, 'node_modules'));
+
 // Load .env from backend
-require('dotenv').config({ path: path.join(__dirname, 'backend', '.env') });
+require('dotenv').config({ path: path.join(BACKEND_DIR, '.env') });
 
 const BACKUP_DIR = path.join(__dirname, 'backups');
 const KEEP_ON_DRIVE = 30;
