@@ -268,7 +268,110 @@ router.delete('/koreksi-absensi/:personnel_id/:bulan', auth(['owner']), async (r
   } catch(e) { res.status(500).json({ success:false, message:e.message }); }
 });
 
-// ── SYNC ABSENSI HARI INI (cache lokal dari Kerjoo) ──
+// ── SYNC ABSENSI (cache lokal dari Kerjoo) ──
+// Helper: sync 1 tanggal dari Kerjoo ke DB lokal
+async function _syncAbsensiForDate(tgl, db2, pidToUid) {
+    const rows = await kgAll('/attendances/dailies-with-details?date=' + tgl);
+    let synced = 0;
+    for (const r of rows) {
+      const pid = r.personnel_id;
+      const uid = pidToUid[pid];
+      if (!uid) continue;
+
+      const atts = r.attendances || [];
+
+      // Kerjoo attendance types: cari berdasarkan type_id DAN type.name
+      // Beberapa Kerjoo kirim type_id numeric, beberapa pakai name string
+      let clockIn = null, clockOut = null;
+      for (const a of atts) {
+        const tName = (a.type?.name || '').toLowerCase();
+        const tId = a.type_id;
+        // Clock In: type_id=1 atau name mengandung 'masuk'/'clock in'/'check in'
+        if (tId === 1 || tName.includes('masuk') || tName.includes('clock in') || tName.includes('check in')) {
+          if (!clockIn) clockIn = a;
+        }
+        // Clock Out: type_id=2 atau name mengandung 'pulang'/'clock out'/'check out'
+        if (tId === 2 || tName.includes('pulang') || tName.includes('clock out') || tName.includes('check out')) {
+          if (!clockOut) clockOut = a;
+        }
+      }
+
+      // Kerjoo log_time bisa UTC atau WIB — deteksi otomatis:
+      // Jika clock_in < 03:00 → kemungkinan UTC (perlu +7), jika >= 06:00 → sudah WIB
+      function parseTime(logTime) {
+        if (!logTime) return null;
+        const parts = logTime.split(':').map(Number);
+        return { h: parts[0] || 0, m: parts[1] || 0, s: parts[2] || 0 };
+      }
+
+      function timeStr(h, m, s) {
+        return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      }
+
+      function toWIB(logTime) {
+        const t = parseTime(logTime);
+        if (!t) return null;
+        // Heuristic: jam 0-5 kemungkinan UTC, convert +7. Jam 6+ anggap sudah WIB.
+        if (t.h < 5) {
+          const wibH = (t.h + 7) % 24;
+          return timeStr(wibH, t.m, t.s);
+        }
+        return timeStr(t.h, t.m, t.s);
+      }
+
+      let ciTime = clockIn ? toWIB(clockIn.log_time) : null;
+      let coTime = clockOut ? toWIB(clockOut.log_time) : null;
+
+      // === VALIDASI LOGIS ===
+      let status = 'tidak_hadir';
+
+      // 1) Jika clockIn dan clockOut ada, pastikan clockOut masuk akal
+      if (ciTime && coTime) {
+        const ciMin = parseInt(ciTime.split(':')[0]) * 60 + parseInt(ciTime.split(':')[1]);
+        const coMin = parseInt(coTime.split(':')[0]) * 60 + parseInt(coTime.split(':')[1]);
+        if (coMin <= ciMin + 30) {
+          // clock_out terlalu dekat / sebelum clock_in → bukan pulang asli
+          coTime = null;
+        }
+      }
+
+      // 2) Jika hanya ada clockOut tanpa clockIn → Kerjoo salah identifikasi
+      //    Jika jam clockOut masuk akal untuk clock-in (jam 6-14), swap jadi clockIn
+      if (!ciTime && coTime) {
+        const coH = parseInt(coTime.split(':')[0]);
+        if (coH >= 6 && coH <= 14) {
+          // Ini sebenarnya clock-in yang salah type
+          ciTime = coTime;
+          coTime = null;
+        } else {
+          // Bisa jadi pulang shift malam — biarkan, tapi tetap buang karena tanpa clock-in
+          coTime = null;
+        }
+      }
+
+      if (ciTime) status = 'hadir';
+      if (ciTime && coTime) status = 'pulang';
+
+      // Jangan overwrite clock_out yang sudah valid dengan null dari sync berikutnya
+      await db2.query(`INSERT INTO absensi_hari_ini (user_id, personnel_id, tanggal, clock_in, clock_out, status)
+        VALUES (?,?,?,?,?,?)
+        ON DUPLICATE KEY UPDATE
+          clock_in = COALESCE(VALUES(clock_in), clock_in),
+          clock_out = CASE
+            WHEN VALUES(clock_out) IS NOT NULL THEN VALUES(clock_out)
+            ELSE clock_out
+          END,
+          status = CASE
+            WHEN VALUES(clock_out) IS NOT NULL THEN 'pulang'
+            WHEN clock_out IS NOT NULL THEN status
+            ELSE VALUES(status)
+          END`,
+        [uid, pid, tgl, ciTime, coTime, status]);
+      synced++;
+    }
+    return synced;
+}
+
 let _lastSyncAbsensi = 0;
 router.post('/sync-absensi-hari-ini', auth(), async (req, res) => {
   try {
@@ -278,46 +381,19 @@ router.post('/sync-absensi-hari-ini', auth(), async (req, res) => {
     _lastSyncAbsensi = Date.now();
 
     const db2 = require('../config/database');
-    const tgl = new Date().toISOString().slice(0,10);
-    const rows = await kgAll('/attendances/dailies-with-details?date=' + tgl);
-
-    // Map personnel_id ke user_id
     const [userRows] = await db2.query('SELECT id, personnel_id FROM users WHERE personnel_id IS NOT NULL AND aktif=1');
     const pidToUid = {};
     userRows.forEach(u => { pidToUid[u.personnel_id] = u.id; });
 
-    let synced = 0;
-    for (const r of rows) {
-      const pid = r.personnel_id;
-      const uid = pidToUid[pid];
-      if (!uid) continue;
+    // Sync HARI INI
+    const today = new Date().toISOString().slice(0,10);
+    const syncedToday = await _syncAbsensiForDate(today, db2, pidToUid);
 
-      const atts = r.attendances || [];
-      const clockIn = atts.find(a => a.type_id === 1 || (a.type?.name||'').toLowerCase() === 'masuk');
-      const clockOut = atts.find(a => a.type_id === 2 || (a.type?.name||'').toLowerCase() === 'pulang');
+    // Sync KEMARIN juga — untuk tangkap clock_out yang belum ter-sync
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+    const syncedYesterday = await _syncAbsensiForDate(yesterday, db2, pidToUid);
 
-      let status = 'tidak_hadir';
-      let ciTime = null, coTime = null;
-      if (clockIn) {
-        const [hh, mm, ss] = (clockIn.log_time || '00:00:00').split(':').map(Number);
-        const wibH = (hh + 7) % 24;
-        ciTime = `${String(wibH).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss||0).padStart(2,'0')}`;
-        status = 'hadir';
-      }
-      if (clockOut) {
-        const [hh, mm, ss] = (clockOut.log_time || '00:00:00').split(':').map(Number);
-        const wibH = (hh + 7) % 24;
-        coTime = `${String(wibH).padStart(2,'0')}:${String(mm).padStart(2,'0')}:${String(ss||0).padStart(2,'0')}`;
-        status = 'pulang';
-      }
-
-      await db2.query(`INSERT INTO absensi_hari_ini (user_id, personnel_id, tanggal, clock_in, clock_out, status)
-        VALUES (?,?,?,?,?,?)
-        ON DUPLICATE KEY UPDATE clock_in=VALUES(clock_in), clock_out=VALUES(clock_out), status=VALUES(status)`,
-        [uid, pid, tgl, ciTime, coTime, status]);
-      synced++;
-    }
-    res.json({success:true, message:`${synced} absensi disync.`, synced});
+    res.json({success:true, message:`Hari ini: ${syncedToday}, kemarin: ${syncedYesterday} disync.`, synced: syncedToday + syncedYesterday});
   } catch(e) {
     console.error('sync-absensi:', e.message);
     res.status(500).json({success:false, message:e.message});

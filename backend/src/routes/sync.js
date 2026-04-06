@@ -82,4 +82,29 @@ router.get('/numbers', auth(), async (req, res) => {
   }
 });
 
+// GET /api/sync/stream — SSE endpoint untuk realtime push
+const { addClient, getClientCount } = require('../utils/eventBus');
+
+router.get('/stream', auth(), (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no', // nginx: jangan buffer SSE
+  });
+
+  // Kirim heartbeat awal supaya client tahu koneksi berhasil
+  res.write(`event: connected\ndata: ${JSON.stringify({ts: Date.now(), clients: getClientCount()+1})}\n\n`);
+
+  addClient(res);
+
+  // Heartbeat tiap 30 detik supaya koneksi tidak ditutup proxy/firewall
+  const hb = setInterval(() => {
+    try { res.write(`event: heartbeat\ndata: ${JSON.stringify({ts:Date.now()})}\n\n`); }
+    catch(e) { clearInterval(hb); }
+  }, 30000);
+
+  req.on('close', () => clearInterval(hb));
+});
+
 module.exports = router;

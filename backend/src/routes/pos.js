@@ -567,6 +567,19 @@ router.post('/transaksi', auth(), async (req, res) => {
 
     await conn.commit();
     audit(req, 'create', 'transaksi', id, `${rp_plain(total)} (${metodeEfektif})`, {total, items_count:items.length, cabang_id:_cab});
+
+    // Broadcast realtime SSE ke semua dashboard yang terhubung
+    try {
+      const { broadcast } = require('../utils/eventBus');
+      broadcast('trx', {
+        id, cabang_id: _cab, kasir_id: req.user.id,
+        kasir_nama: req.user.nama_lengkap || req.user.username,
+        total, komisi: totalKomisi, poin: totalPoin,
+        items_count: items.length, metode: metodeEfektif,
+        ts: Date.now()
+      });
+    } catch(e) {}
+
     res.json({success:true, id, total, kembalian, message:'Transaksi berhasil.'});
   } catch(e) {
     await conn.rollback();
@@ -1837,10 +1850,15 @@ router.get('/barcode/:barcode', auth(), async (req, res) => {
   } catch(e) { res.status(500).json({success:false, message:e.message}); }
 });
 
-// PUT /api/pos/produk/:id/barcode — assign barcode
+// PUT /api/pos/produk/:id/barcode — assign/update/clear barcode
 router.put('/produk/:id/barcode', auth(['owner','admin_pusat','head_operational']), async (req, res) => {
   try {
     const { barcode } = req.body;
+    // Allow clearing barcode
+    if (barcode === '' || barcode === null) {
+      await db.query('UPDATE pos_produk SET barcode=NULL WHERE id=?', [req.params.id]);
+      return res.json({success:true, message:'Barcode berhasil dihapus.'});
+    }
     if (!barcode) return res.status(400).json({success:false, message:'Barcode wajib diisi.'});
     // Cek duplikat
     const [[dup]] = await db.query('SELECT id,nama FROM pos_produk WHERE barcode=? AND id!=?', [barcode, req.params.id]);

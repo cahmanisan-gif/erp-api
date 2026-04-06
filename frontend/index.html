@@ -1585,15 +1585,13 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
 @media (min-width:1024px) {
   #tb-tab-buat > .card:first-child { max-width:none!important; }
   #tb-cart-panel { max-width:100%; }
-  #tb-cart-body { max-height:280px!important; }
 }
 
 /* ═══ MOBILE WEB: Transfer Barang ═══ */
 @media (max-width:768px) {
   #pg-transfer-barang .form-grid { grid-template-columns:1fr!important; }
   #pg-transfer-barang .search-input { width:100%!important; }
-  #tb-cart-panel { position:static!important; }
-  #tb-cart-body { max-height:200px!important; }
+  #tb-cart-panel { position:sticky!important;top:0!important;z-index:12!important; }
   #tb-sticky-bar { flex-direction:column; gap:10px; }
   #tb-sticky-bar .btn { width:100%; }
   /* Riwayat filter: stack */
@@ -1631,11 +1629,10 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
   width:70px!important; min-height:44px!important; font-size:16px!important;
   font-weight:700!important; text-align:center!important; border-radius:10px!important;
 }
-/* Cart panel: normal flow, not sticky — agar tidak menutupi tabel */
+/* Cart panel: sticky di atas saat scroll */
 .app-mode #tb-cart-panel {
-  position:static!important; margin-top:12px!important;
+  position:sticky!important;top:0!important;z-index:12!important;margin-top:0!important;
 }
-.app-mode #tb-cart-body { max-height:200px!important; }
 .app-mode #tb-cart-list > div { padding:10px 12px!important; }
 .app-mode #tb-cart-list > div > div:first-child > div:first-child { font-size:14px!important; }
 /* Sticky bar: above bottom nav */
@@ -1839,6 +1836,9 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>.leaflet-pane,.leaflet-top,.leaflet-bottom{z-index:auto!important}#cb-map .leaflet-pane{z-index:400!important}#cb-map .leaflet-top{z-index:401!important}</style>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 
@@ -2125,10 +2125,16 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
           </div>
         </div>
 
-        <!-- Leaderboard Omzet Toko Hari Ini -->
+        <!-- Toggle Leaderboard Mode -->
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <button class="btn btn-xs dk-lb-mode active" data-mode="hari_ini" onclick="dkSwitchLbMode('hari_ini',this)" style="flex:1;border-radius:8px;font-weight:700;font-size:12px;padding:8px 0;background:var(--brand);color:#fff;border:none">Hari Ini</button>
+          <button class="btn btn-xs dk-lb-mode" data-mode="bulan_ini" onclick="dkSwitchLbMode('bulan_ini',this)" style="flex:1;border-radius:8px;font-weight:700;font-size:12px;padding:8px 0;background:var(--surface-2);color:var(--text);border:1px solid var(--border)">Bulan Ini</button>
+        </div>
+
+        <!-- Leaderboard Omzet Toko -->
         <div class="card" style="margin-bottom:14px;padding:0;overflow:hidden">
           <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
-            <b style="font-size:14px;flex:1">🏆 Top Toko Hari Ini</b>
+            <b style="font-size:14px;flex:1" id="dk-lb-toko-title">🏆 Top Toko Hari Ini</b>
           </div>
           <div id="dk-lb-toko" style="padding:8px 14px 14px"></div>
         </div>
@@ -2136,7 +2142,7 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
         <!-- Leaderboard Omzet Per Kasir -->
         <div class="card" style="margin-bottom:14px;padding:0;overflow:hidden">
           <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
-            <b style="font-size:14px;flex:1">👤 Top Kasir Hari Ini</b>
+            <b style="font-size:14px;flex:1" id="dk-lb-kasir-title">👤 Top Kasir Hari Ini</b>
           </div>
           <div id="dk-lb-kasir" style="padding:8px 14px 14px"></div>
         </div>
@@ -2144,7 +2150,7 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
         <!-- Leaderboard Poin Per Kasir -->
         <div class="card" style="margin-bottom:14px;padding:0;overflow:hidden">
           <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
-            <b style="font-size:14px;flex:1">🎯 Top Poin Hari Ini</b>
+            <b style="font-size:14px;flex:1" id="dk-lb-poin-title">🎯 Top Poin Hari Ini</b>
           </div>
           <div id="dk-lb-poin" style="padding:8px 14px 14px"></div>
         </div>
@@ -3823,6 +3829,46 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
             <tbody id="barcode-body"><tr class="loading-row"><td colspan="5">Memuat…</td></tr></tbody>
           </table></div>
         </div>
+
+        <!-- MODAL EDIT BARCODE -->
+        <div id="modal-barcode-edit" class="modal-overlay" style="display:none">
+          <div class="modal" style="max-width:480px">
+            <div class="modal-head">
+              <h3 id="bc-edit-title">Edit Barcode</h3>
+              <button class="modal-close" onclick="bcEditClose()">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:20px">
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px">
+                <div style="font-size:12px;color:var(--muted);margin-bottom:2px">Produk</div>
+                <div id="bc-edit-nama" style="font-weight:700;font-size:15px"></div>
+                <div id="bc-edit-sku" style="font-size:12px;color:var(--muted);margin-top:2px"></div>
+              </div>
+              <label class="form-label" style="margin-bottom:6px">Barcode</label>
+              <div style="position:relative">
+                <input type="text" id="bc-edit-input" class="form-input" placeholder="Scan barcode atau ketik manual…" autocomplete="off"
+                  style="font-size:18px;font-family:monospace;letter-spacing:1px;padding:12px 44px 12px 14px;text-align:center">
+                <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;opacity:.4" title="Gunakan scanner barcode">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+                </span>
+              </div>
+              <div style="font-size:11px;color:var(--muted);margin-top:6px;display:flex;align-items:center;gap:4px">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                Langsung scan barcode pabrik — otomatis terisi &amp; tersimpan. Atau ketik manual lalu Enter.
+              </div>
+              <div id="bc-edit-scan-status" style="display:none;margin-top:8px;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:600;text-align:center;animation:pulse .5s"></div>
+              <div id="bc-edit-preview" style="text-align:center;margin-top:16px;min-height:50px">
+                <svg id="bc-edit-svg"></svg>
+              </div>
+              <div id="bc-edit-error" style="display:none;color:var(--red);font-size:13px;margin-top:8px;text-align:center"></div>
+            </div>
+            <div class="modal-foot">
+              <button class="btn btn-ghost" onclick="bcEditClose()">Batal</button>
+              <button class="btn btn-danger btn-sm" id="bc-edit-btn-hapus" style="display:none" onclick="bcEditHapus()">Hapus Barcode</button>
+              <button class="btn btn-primary" id="bc-edit-btn-save" onclick="bcEditSave()">Simpan</button>
+            </div>
+          </div>
+        </div>
+
       </div><!-- /produk-tab-barcode -->
     </div>
 
@@ -4268,20 +4314,20 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
                 <div id="tb-req-list" style="display:flex;flex-direction:column;gap:6px"></div>
               </div>
             </div>
-            <!-- KERANJANG TRANSFER — live preview items yang sudah diinput -->
-            <div id="tb-cart-panel" style="display:none;margin-bottom:12px">
-              <div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:12px;overflow:hidden">
-                <div id="tb-cart-header" style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;-webkit-tap-highlight-color:transparent" onclick="tbToggleCart()">
+            <!-- KERANJANG TRANSFER — sticky, dynamic height -->
+            <div id="tb-cart-panel" style="display:none;position:sticky;top:0;z-index:12;margin-bottom:12px;transition:all .25s ease">
+              <div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)">
+                <div id="tb-cart-header" style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;-webkit-tap-highlight-color:transparent" onclick="tbToggleCart()">
                   <div style="display:flex;align-items:center;gap:8px">
-                    <svg viewBox="20 20 160 160" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#15803D" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" style="width:72px;height:48px;flex-shrink:0"><path d="M72,95 Q72,42 100,42 Q128,42 128,95"/><rect x="84" y="30" width="32" height="16" rx="2" fill="#F0FDF4" stroke="#15803D" stroke-width="7"/><rect x="44" y="92" width="112" height="16" rx="3" fill="#F0FDF4" stroke="#15803D" stroke-width="7"/><path d="M52,108 L58,172 L142,172 L148,108 Z" fill="#F0FDF4" stroke="#15803D" stroke-width="7"/><polyline points="88,148 72,140 88,132"/><line x1="72" y1="140" x2="92" y2="140"/><polyline points="112,148 128,140 112,132"/><line x1="108" y1="140" x2="128" y2="140"/></svg>
+                    <span style="font-size:18px">📦</span>
                     <b style="color:#15803D;font-size:14px">Keranjang Transfer</b>
                     <span id="tb-cart-badge" style="background:#16A34A;color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;min-width:24px;text-align:center">0</span>
                   </div>
                   <span id="tb-cart-arrow" style="font-size:14px;color:#15803D;transition:transform .2s">▼</span>
                 </div>
-                <div id="tb-cart-body" style="border-top:1px solid #BBF7D0;max-height:320px;overflow-y:auto;-webkit-overflow-scrolling:touch">
-                  <div id="tb-cart-list" style="padding:8px"></div>
-                  <div id="tb-cart-total" style="padding:10px 16px;background:#DCFCE7;font-size:13px;font-weight:700;color:#15803D;display:flex;justify-content:space-between"></div>
+                <div id="tb-cart-body" style="border-top:1px solid #BBF7D0;overflow-y:auto;-webkit-overflow-scrolling:touch;transition:max-height .25s ease">
+                  <div id="tb-cart-list" style="padding:4px 8px"></div>
+                  <div id="tb-cart-total" style="padding:8px 14px;background:#DCFCE7;font-size:13px;font-weight:700;color:#15803D;display:flex;justify-content:space-between"></div>
                 </div>
               </div>
             </div>
@@ -6217,11 +6263,29 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
         </div>
         <div class="fg full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
           <label class="form-label">📍 Koordinat Lokasi Toko <span style="color:var(--muted-l);font-weight:400">(opsional — dipakai validasi GPS konten)</span></label>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <input id="cb-lat" class="form-input" style="width:160px" placeholder="Latitude  (-7.123456)" type="number" step="any">
-            <input id="cb-lng" class="form-input" style="width:160px" placeholder="Longitude (110.123456)" type="number" step="any">
-            <button type="button" class="btn btn-ghost btn-xs" onclick="cbGunakanLokasiSaya()" title="Gunakan lokasi browser saat ini">📡 Lokasi Saya</button>
+          <!-- Search tempat -->
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+            <div style="position:relative;flex:1;min-width:200px">
+              <input id="cb-map-search" class="form-input" placeholder="Cari nama toko / alamat…" autocomplete="off"
+                style="padding-right:36px">
+              <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;opacity:.4">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </span>
+            </div>
+            <button type="button" class="btn btn-ghost btn-xs" onclick="cbGunakanLokasiSaya()" title="Gunakan lokasi GPS perangkat">📡 Lokasi Saya</button>
+          </div>
+          <div id="cb-map-results" style="display:none;max-height:150px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:#fff"></div>
+          <!-- Peta interaktif -->
+          <div id="cb-map-container" style="height:260px;border-radius:10px;border:1px solid var(--border);overflow:hidden;background:#e8e8e8;position:relative">
+            <div id="cb-map" style="height:100%;width:100%"></div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Geser pin untuk mengatur posisi. Atau cari nama toko di atas.</div>
+          <!-- Lat/Lng readonly display -->
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px">
+            <input id="cb-lat" class="form-input" style="width:150px;font-size:12px;font-family:monospace" placeholder="Latitude" type="number" step="any" readonly>
+            <input id="cb-lng" class="form-input" style="width:150px;font-size:12px;font-family:monospace" placeholder="Longitude" type="number" step="any" readonly>
             <span id="cb-maps-link" style="font-size:12px"></span>
+            <button type="button" class="btn btn-ghost btn-xs" onclick="cbResetKoordinat()" title="Hapus koordinat">Hapus</button>
           </div>
           <div id="cb-koordinat-status" style="font-size:12px;color:var(--muted);margin-top:4px"></div>
         </div>
@@ -8147,11 +8211,12 @@ function doLogout() {
   posIdbClearToken(); // hapus token dari IDB
   clearTimeout(sessionTimer);
   clearTimeout(sessionWarningTimer);
-  // Stop auto-sync timer agar tidak refresh di halaman login
+  // Stop auto-sync timer & SSE
   clearInterval(_syncTimer);
   clearInterval(_syncCountTimer);
   _syncTimer = null;
   _syncCountTimer = null;
+  _sseDisconnect();
   _setSyncState('off');
   _store().removeItem('rv_token');
   _store().removeItem('rv_user');
@@ -8363,6 +8428,7 @@ function toggleSbGroup(groupId) {
       await loadMasterData();
       _ssInitAll();
       initNotifSystem();
+      initRealtimeStream();
       if (IS_APK) { appBuildBottomNav(); appUpdateTopBar(); }
       navTo('pg-dashboard');
     });
@@ -8800,6 +8866,135 @@ async function _tickerSync() {
   } finally {
     _tickerBusy = false;
   }
+}
+
+// ═══ REALTIME DASHBOARD — DUAL SYSTEM: SSE + POLLING FALLBACK ═══
+// SSE untuk instant push (jika WebView support & koneksi stabil)
+// Polling fallback tiap 8 detik (pasti jalan di semua device termasuk APK)
+let _sseSource = null;
+let _sseRetryTimer = null;
+let _sseConnected = false;
+let _sseLastTrx = 0;
+let _dashPollTimer = null;
+let _dashPollBusy = false;
+let _dashLastRefresh = 0;
+
+function initRealtimeStream() {
+  // 1) Start polling fallback — SELALU jalan, tidak tergantung SSE
+  _startDashboardPolling();
+
+  // 2) Coba SSE jika browser/WebView support
+  _initSSE();
+
+  // 3) Refresh saat app kembali dari background (Android)
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden && ACTIVE_PAGE === 'pg-dashboard') {
+      _refreshDashboardWidgets();
+    }
+  });
+  // Android WebView: resume event
+  window.addEventListener('focus', function() {
+    if (ACTIVE_PAGE === 'pg-dashboard') _refreshDashboardWidgets();
+  });
+}
+
+// ── POLLING FALLBACK (pasti jalan di APK) ──
+function _startDashboardPolling() {
+  if (_dashPollTimer) clearInterval(_dashPollTimer);
+  _dashPollTimer = setInterval(function() {
+    if (!TOKEN || document.hidden) return;
+    if (ACTIVE_PAGE !== 'pg-dashboard') return;
+    if (_sseConnected) return; // SSE aktif, skip polling
+    _refreshDashboardWidgets();
+  }, 8000); // tiap 8 detik
+}
+
+// ── SSE INSTANT PUSH ──
+function _initSSE() {
+  if (_sseSource) { _sseSource.close(); _sseSource = null; }
+  if (!TOKEN || typeof EventSource === 'undefined') return;
+
+  try {
+    var url = API + '/api/sync/stream?token=' + encodeURIComponent(TOKEN);
+    _sseSource = new EventSource(url);
+
+    _sseSource.addEventListener('connected', function() {
+      _sseConnected = true;
+    });
+
+    _sseSource.addEventListener('trx', function(e) {
+      var now = Date.now();
+      if (now - _sseLastTrx < 2000) return;
+      _sseLastTrx = now;
+      if (ACTIVE_PAGE === 'pg-dashboard') _refreshDashboardWidgets();
+    });
+
+    _sseSource.onerror = function() {
+      _sseConnected = false;
+      if (_sseSource) _sseSource.close();
+      _sseSource = null;
+      // Retry SSE setelah 10 detik — polling tetap jalan sebagai backup
+      if (_sseRetryTimer) clearTimeout(_sseRetryTimer);
+      _sseRetryTimer = setTimeout(function() { _initSSE(); }, 10000);
+    };
+  } catch(ex) {
+    // EventSource gagal (WebView lama) — tidak apa, polling tetap jalan
+    _sseConnected = false;
+  }
+}
+
+// ── REFRESH SEMUA WIDGET DASHBOARD ──
+async function _refreshDashboardWidgets() {
+  if (_dashPollBusy || !TOKEN) return;
+  var now = Date.now();
+  if (now - _dashLastRefresh < 3000) return; // debounce 3 detik
+  _dashPollBusy = true;
+  _dashLastRefresh = now;
+
+  try {
+    // Refresh sesuai role
+    var isKasir = USER && ['kasir','vaporista','kasir_sales','kepala_cabang'].includes(USER.role);
+
+    if (isKasir) {
+      // Kasir: refresh omzet pribadi + leaderboard parallel
+      var tgl = new Date().toISOString().slice(0,10);
+      var [resRekap, resLb] = await Promise.all([
+        api('/staff/rekap/saya?dari=' + tgl + '&sampai=' + tgl).catch(function(){return{data:{}};}),
+        api('/dashboard/leaderboard-retail?mode=' + (DK_LB_MODE || 'hari_ini')).catch(function(){return{data:{}};}),
+      ]);
+
+      // Update personal stats
+      var d = resRekap.data || {};
+      var el1 = document.getElementById('ds-omzet-today');
+      var el2 = document.getElementById('ds-trx-today');
+      if (el1) el1.textContent = rp(parseFloat(d.omzet_total || 0));
+      if (el2) el2.textContent = (parseInt(d.total_trx || 0)) + ' transaksi';
+
+      // Update komisi & poin jika ada
+      var elKomisi = document.getElementById('ds-komisi-today');
+      var elPoin = document.getElementById('ds-poin-today');
+      if (elKomisi) elKomisi.textContent = rp(parseFloat(d.total_komisi || 0));
+      if (elPoin) elPoin.textContent = parseInt(d.total_poin || 0);
+
+      // Update leaderboard
+      var lb = resLb.data || {};
+      if (typeof dkRenderLbToko === 'function') dkRenderLbToko(lb.top_toko || []);
+      if (typeof dkRenderLbKasir === 'function') dkRenderLbKasir(lb.top_kasir || []);
+      if (typeof dkRenderLbPoin === 'function') dkRenderLbPoin(lb.top_poin || []);
+    } else {
+      // Owner/admin: ticker + leaderboard
+      _tickerSync();
+    }
+  } catch(ex) {}
+  _dashPollBusy = false;
+}
+
+// Cleanup saat logout
+function _sseDisconnect() {
+  if (_sseSource) { _sseSource.close(); _sseSource = null; }
+  if (_sseRetryTimer) { clearTimeout(_sseRetryTimer); _sseRetryTimer = null; }
+  if (_dashPollTimer) { clearInterval(_dashPollTimer); _dashPollTimer = null; }
+  _sseConnected = false;
 }
 
 // Full reload untuk halaman yang butuh tabel fresh
@@ -9501,6 +9696,27 @@ function _cleanupDashChartTooltips() {
 }
 
 // ── DASHBOARD ───────────────────────────────────
+function _renderOwnerCharts(d) {
+  if (d.trend_7_hari && d.trend_7_hari.length >= 1) {
+    const pts = d.trend_7_hari;
+    const today = pts[pts.length-1];
+    const el1 = document.getElementById('dash-chart-trx-date');
+    const el2 = document.getElementById('dash-chart-omzet-date');
+    const el3 = document.getElementById('dash-chart-laba-date');
+    if (el1) el1.textContent = new Date(today.tgl+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+    if (el2) el2.textContent = new Date(today.tgl+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+    if (el3) el3.textContent = new Date(today.tgl+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+    _renderDashChart('dash-chart-trx', pts, 'trx', '#10B981', 'Transaksi', v => _fmtNum(v), (p) => `${p.trx} transaksi`);
+    _renderDashChart('dash-chart-omzet', pts, 'omzet', '#C1121F', 'Pendapatan', v => _fmtRp(v), (p) => `Pendapatan: ${_fmtRp(p.omzet)}`);
+    _renderDashChart('dash-chart-laba', pts, 'keuntungan', '#2563EB', 'Keuntungan', v => _fmtRp(v), (p) => `Laba: ${_fmtRp(p.keuntungan)}\nHPP: ${_fmtRp(p.hpp)}`);
+  } else {
+    ['dash-chart-trx','dash-chart-omzet','dash-chart-laba'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:13px">Belum ada data</div>';
+    });
+  }
+}
+
 async function loadDashboard() {
   const isSalesRole = ['kasir_sales','sales'].includes(USER.role);
   const isKasirRole = ['kasir','vaporista'].includes(USER.role);
@@ -9523,14 +9739,29 @@ async function loadDashboard() {
     return;
   }
 
-  // Dashboard owner/admin
+  // Dashboard owner/admin — tampilkan skeleton langsung, data menyusul
+  document.getElementById('dash-owner-cards').innerHTML = `
+    <div class="stat-card" style="min-height:80px"><div style="background:var(--surface-2);border-radius:8px;height:24px;width:60%;margin-bottom:8px"></div><div style="background:var(--surface-2);border-radius:6px;height:14px;width:40%"></div></div>
+    <div class="stat-card" style="min-height:80px"><div style="background:var(--surface-2);border-radius:8px;height:24px;width:60%;margin-bottom:8px"></div><div style="background:var(--surface-2);border-radius:6px;height:14px;width:40%"></div></div>
+    <div class="stat-card" style="min-height:80px"><div style="background:var(--surface-2);border-radius:8px;height:24px;width:60%;margin-bottom:8px"></div><div style="background:var(--surface-2);border-radius:6px;height:14px;width:40%"></div></div>`;
+
   try {
     const [ownerData, reqs] = await Promise.all([
-      api('/dashboard/owner').catch(()=>({data:null})), api('/request?limit=5')
+      api('/dashboard/owner').catch(()=>({data:null})), api('/request?limit=5').catch(()=>({data:[]}))
     ]);
 
     const fmt = v => _fmtRp(v||0);
     const d = ownerData.data;
+
+    if (!d) {
+      // Timeout atau error — tampilkan pesan
+      document.getElementById('dash-owner-cards').innerHTML = `
+        <div class="stat-card" style="grid-column:1/-1;text-align:center;padding:24px;color:var(--muted)">
+          <div style="font-size:14px;font-weight:600;margin-bottom:4px">Dashboard sedang dimuat...</div>
+          <div style="font-size:12px">Data akan muncul dalam beberapa detik. <button class="btn btn-ghost btn-xs" onclick="loadDashboard()" style="margin-left:8px">Refresh</button></div>
+        </div>`;
+      return;
+    }
 
     if (d) {
       // ── Summary cards ──
@@ -9566,24 +9797,9 @@ async function loadDashboard() {
           <div class="stat-lbl">Retur Pending</div>
         </div>` : ''}`;
 
-      // ── 3 Dashboard Charts (Transaksi, Pendapatan, Keuntungan) with hover tooltip ──
-      if (d.trend_7_hari.length >= 1) {
-        const pts = d.trend_7_hari;
-        const today = pts[pts.length-1];
-        document.getElementById('dash-chart-trx-date').textContent = new Date(today.tgl+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
-        document.getElementById('dash-chart-omzet-date').textContent = new Date(today.tgl+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
-        document.getElementById('dash-chart-laba-date').textContent = new Date(today.tgl+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+      // ── 3 Dashboard Charts — deferred render supaya cards muncul duluan di APK ──
+      setTimeout(() => { _renderOwnerCharts(d); }, 50);
 
-        _renderDashChart('dash-chart-trx', pts, 'trx', '#10B981', 'Transaksi', v => _fmtNum(v), (p) => `${p.trx} transaksi`);
-        _renderDashChart('dash-chart-omzet', pts, 'omzet', '#C1121F', 'Pendapatan', v => _fmtRp(v), (p) => `Pendapatan: ${_fmtRp(p.omzet)}`);
-        _renderDashChart('dash-chart-laba', pts, 'keuntungan', '#2563EB', 'Keuntungan', v => _fmtRp(v), (p) => `Laba: ${_fmtRp(p.keuntungan)}\nHPP: ${_fmtRp(p.hpp)}`);
-      } else {
-        ['dash-chart-trx','dash-chart-omzet','dash-chart-laba'].forEach(id => {
-          document.getElementById(id).innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:13px">Belum ada data</div>';
-        });
-      }
-
-      // ── Top cabang ──
       document.getElementById('dash-top-cabang').innerHTML = d.top_cabang.length
         ? d.top_cabang.map((c,i) => `
           <div style="display:flex;align-items:center;gap:8px;padding:7px 0;${i<d.top_cabang.length-1?'border-bottom:1px solid var(--border)':''}">
@@ -9891,77 +10107,120 @@ async function loadDashboardKasir() {
   dkRenderLbPoin(lb.top_poin || []);
 }
 
-function _dkLbEmpty(el) { el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px">Belum ada transaksi hari ini</div>'; }
+let DK_LB_MODE = 'hari_ini';
+
+async function dkSwitchLbMode(mode, btn) {
+  DK_LB_MODE = mode;
+  // Update button styles
+  document.querySelectorAll('.dk-lb-mode').forEach(function(b) {
+    if (b.dataset.mode === mode) {
+      b.style.background = 'var(--brand)'; b.style.color = '#fff'; b.style.border = 'none';
+    } else {
+      b.style.background = 'var(--surface-2)'; b.style.color = 'var(--text)'; b.style.border = '1px solid var(--border)';
+    }
+  });
+  // Update titles
+  var label = mode === 'bulan_ini' ? 'Bulan Ini' : 'Hari Ini';
+  var t1 = document.getElementById('dk-lb-toko-title'); if (t1) t1.textContent = '🏆 Top Toko ' + label;
+  var t2 = document.getElementById('dk-lb-kasir-title'); if (t2) t2.textContent = '👤 Top Kasir ' + label;
+  var t3 = document.getElementById('dk-lb-poin-title'); if (t3) t3.textContent = '🎯 Top Poin ' + label;
+  // Show loading
+  ['dk-lb-toko','dk-lb-kasir','dk-lb-poin'].forEach(function(id) {
+    document.getElementById(id).innerHTML = '<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px">Memuat...</div>';
+  });
+  // Fetch data
+  var res = await api('/dashboard/leaderboard-retail?mode=' + mode).catch(function(){return{data:{}};});
+  var lb = res.data || {};
+  dkRenderLbToko(lb.top_toko || []);
+  dkRenderLbKasir(lb.top_kasir || []);
+  dkRenderLbPoin(lb.top_poin || []);
+}
+
+function _dkLbEmpty(el) {
+  var label = DK_LB_MODE === 'bulan_ini' ? 'bulan ini' : 'hari ini';
+  el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px">Belum ada transaksi ' + label + '</div>';
+}
+
+// Cache data leaderboard untuk modal selengkapnya
+var DK_LB_CACHE = { top_toko: [], top_kasir: [], top_poin: [] };
+
+function _dkLbRow(r, i, type) {
+  var medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+  var isPoin = type === 'poin';
+  var isToko = type === 'toko';
+  var userId = isToko ? USER.cabang_id : USER.id;
+  var isMe = isToko ? r.cabang_id == userId : r.kasir_id == userId;
+  var meBg = isPoin ? 'background:#FFF7ED;border:1.5px solid #FDBA74;' : 'background:#EFF6FF;border:1.5px solid #93C5FD;';
+  var meTag = isPoin
+    ? '<span style="font-size:9px;background:#F59E0B;color:#fff;padding:1px 5px;border-radius:4px">KAMU</span>'
+    : (isToko ? '<span style="font-size:9px;background:#2563EB;color:#fff;padding:1px 5px;border-radius:4px">TOKO KAMU</span>' : '<span style="font-size:9px;background:#2563EB;color:#fff;padding:1px 5px;border-radius:4px">KAMU</span>');
+  var max = isPoin ? (DK_LB_CACHE.top_poin[0]?.total_poin||1) : (isToko ? (DK_LB_CACHE.top_toko[0]?.omzet||1) : (DK_LB_CACHE.top_kasir[0]?.omzet||1));
+  var val = isPoin ? r.total_poin : r.omzet;
+  var pct = Math.round((val / max) * 100);
+  var valColor = isPoin ? '#F59E0B' : '#059669';
+  var barGrad = isPoin ? 'linear-gradient(90deg,#F59E0B,#FCD34D)' : 'linear-gradient(90deg,#059669,#34D399)';
+  var nama = isToko ? ((r.kode_cabang||'')+' '+(r.nama_cabang||'')).trim() : (r.nama_lengkap||'?');
+  var sub = isToko ? '' : '<div style="font-size:10px;color:var(--muted)">' + (r.nama_cabang||'') + (r.trx ? ' · '+r.trx+' trx' : '') + '</div>';
+  var valStr = isPoin ? '<span style="font-size:15px;font-weight:800;color:'+valColor+'">'+r.total_poin+'</span>'
+    : '<span style="font-size:13px;font-weight:800;color:'+valColor+'">'+rp(r.omzet)+'</span>';
+
+  return '<div style="padding:8px 10px;border-radius:10px;margin-bottom:4px;' + (isMe?meBg:'') + '">'
+    + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
+    + '<span style="width:22px;text-align:center;font-size:' + (medal?'14px':'11px') + ';color:var(--muted)">' + (medal||(i+1)) + '</span>'
+    + '<div style="flex:1;min-width:0"><b style="font-size:12px">' + nama + (isMe?' '+meTag:'') + '</b>' + sub + '</div>'
+    + valStr
+    + '</div>'
+    + '<div style="background:var(--surface-2);border-radius:99px;height:4px;overflow:hidden;margin-left:28px"><div style="height:100%;width:'+pct+'%;background:'+barGrad+';border-radius:99px"></div></div>'
+    + '</div>';
+}
 
 function dkRenderLbToko(rows) {
+  DK_LB_CACHE.top_toko = rows;
   var el = document.getElementById('dk-lb-toko');
   if (!rows.length) { _dkLbEmpty(el); return; }
-  var max = rows[0].omzet || 1;
-  var userId = USER.cabang_id;
   var html = '';
-  for (var i = 0; i < Math.min(rows.length, 10); i++) {
-    var r = rows[i];
-    var pct = Math.round((r.omzet / max) * 100);
-    var medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
-    var isMe = r.cabang_id == userId;
-    html += '<div style="padding:8px 10px;border-radius:10px;margin-bottom:4px;' + (isMe?'background:#EFF6FF;border:1.5px solid #93C5FD;':'') + '">'
-      + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
-      + '<span style="width:22px;text-align:center;font-size:' + (medal?'14px':'11px') + ';color:var(--muted)">' + (medal||(i+1)) + '</span>'
-      + '<b style="flex:1;font-size:12px">' + (r.kode_cabang||'') + ' ' + (r.nama_cabang||'') + (isMe?' <span style="font-size:9px;background:#2563EB;color:#fff;padding:1px 5px;border-radius:4px">TOKO KAMU</span>':'') + '</b>'
-      + '<span style="font-size:13px;font-weight:800;color:#059669">' + rp(r.omzet) + '</span>'
-      + '</div>'
-      + '<div style="background:var(--surface-2);border-radius:99px;height:4px;overflow:hidden;margin-left:28px"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#059669,#34D399);border-radius:99px"></div></div>'
-      + '</div>';
-  }
+  for (var i = 0; i < Math.min(rows.length, 3); i++) html += _dkLbRow(rows[i], i, 'toko');
+  if (rows.length > 3) html += '<div style="text-align:center;padding:8px 10px"><button onclick="dkOpenLbModal(\'toko\')" style="width:100%;padding:10px 16px;background:#DC2626;color:#fff;border:none;border-radius:8px;font-family:Montserrat,sans-serif;font-weight:500;font-size:12px;letter-spacing:.5px;text-transform:uppercase;cursor:pointer">SELENGKAPNYA (' + rows.length + ' TOKO)</button></div>';
   el.innerHTML = html;
 }
 
 function dkRenderLbKasir(rows) {
+  DK_LB_CACHE.top_kasir = rows;
   var el = document.getElementById('dk-lb-kasir');
   if (!rows.length) { _dkLbEmpty(el); return; }
-  var max = rows[0].omzet || 1;
-  var userId = USER.id;
   var html = '';
-  for (var i = 0; i < Math.min(rows.length, 10); i++) {
-    var r = rows[i];
-    var pct = Math.round((r.omzet / max) * 100);
-    var medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
-    var isMe = r.kasir_id == userId;
-    html += '<div style="padding:8px 10px;border-radius:10px;margin-bottom:4px;' + (isMe?'background:#EFF6FF;border:1.5px solid #93C5FD;':'') + '">'
-      + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
-      + '<span style="width:22px;text-align:center;font-size:' + (medal?'14px':'11px') + ';color:var(--muted)">' + (medal||(i+1)) + '</span>'
-      + '<div style="flex:1;min-width:0"><b style="font-size:12px">' + (r.nama_lengkap||'?') + (isMe?' <span style="font-size:9px;background:#2563EB;color:#fff;padding:1px 5px;border-radius:4px">KAMU</span>':'') + '</b>'
-      + '<div style="font-size:10px;color:var(--muted)">' + (r.nama_cabang||'') + ' · ' + r.trx + ' trx</div></div>'
-      + '<span style="font-size:13px;font-weight:800;color:#059669">' + rp(r.omzet) + '</span>'
-      + '</div>'
-      + '<div style="background:var(--surface-2);border-radius:99px;height:4px;overflow:hidden;margin-left:28px"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#059669,#34D399);border-radius:99px"></div></div>'
-      + '</div>';
-  }
+  for (var i = 0; i < Math.min(rows.length, 3); i++) html += _dkLbRow(rows[i], i, 'kasir');
+  if (rows.length > 3) html += '<div style="text-align:center;padding:8px 10px"><button onclick="dkOpenLbModal(\'kasir\')" style="width:100%;padding:10px 16px;background:#DC2626;color:#fff;border:none;border-radius:8px;font-family:Montserrat,sans-serif;font-weight:500;font-size:12px;letter-spacing:.5px;text-transform:uppercase;cursor:pointer">SELENGKAPNYA (' + rows.length + ' KASIR)</button></div>';
   el.innerHTML = html;
 }
 
 function dkRenderLbPoin(rows) {
+  DK_LB_CACHE.top_poin = rows;
   var el = document.getElementById('dk-lb-poin');
   if (!rows.length) { _dkLbEmpty(el); return; }
-  var max = rows[0].total_poin || 1;
-  var userId = USER.id;
   var html = '';
-  for (var i = 0; i < Math.min(rows.length, 10); i++) {
-    var r = rows[i];
-    var pct = Math.round((r.total_poin / max) * 100);
-    var medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
-    var isMe = r.kasir_id == userId;
-    html += '<div style="padding:8px 10px;border-radius:10px;margin-bottom:4px;' + (isMe?'background:#FFF7ED;border:1.5px solid #FDBA74;':'') + '">'
-      + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">'
-      + '<span style="width:22px;text-align:center;font-size:' + (medal?'14px':'11px') + ';color:var(--muted)">' + (medal||(i+1)) + '</span>'
-      + '<div style="flex:1;min-width:0"><b style="font-size:12px">' + (r.nama_lengkap||'?') + (isMe?' <span style="font-size:9px;background:#F59E0B;color:#fff;padding:1px 5px;border-radius:4px">KAMU</span>':'') + '</b>'
-      + '<div style="font-size:10px;color:var(--muted)">' + (r.nama_cabang||'') + '</div></div>'
-      + '<span style="font-size:15px;font-weight:800;color:#F59E0B">' + r.total_poin + '</span>'
-      + '</div>'
-      + '<div style="background:var(--surface-2);border-radius:99px;height:4px;overflow:hidden;margin-left:28px"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#F59E0B,#FCD34D);border-radius:99px"></div></div>'
-      + '</div>';
-  }
+  for (var i = 0; i < Math.min(rows.length, 3); i++) html += _dkLbRow(rows[i], i, 'poin');
+  if (rows.length > 3) html += '<div style="text-align:center;padding:8px 10px"><button onclick="dkOpenLbModal(\'poin\')" style="width:100%;padding:10px 16px;background:#DC2626;color:#fff;border:none;border-radius:8px;font-family:Montserrat,sans-serif;font-weight:500;font-size:12px;letter-spacing:.5px;text-transform:uppercase;cursor:pointer">SELENGKAPNYA (' + rows.length + ' KASIR)</button></div>';
   el.innerHTML = html;
+}
+
+// Modal selengkapnya
+function dkOpenLbModal(type) {
+  var titles = { toko: '🏆 Top Toko', kasir: '👤 Top Kasir', poin: '🎯 Top Poin' };
+  var label = DK_LB_MODE === 'bulan_ini' ? 'Bulan Ini' : 'Hari Ini';
+  var rows = DK_LB_CACHE['top_'+type] || [];
+  var html = '<div class="modal-overlay" id="modal-lb-detail" style="display:flex" onclick="if(event.target===this)this.style.display=\'none\'">'
+    + '<div class="modal" style="max-width:520px;max-height:85vh;display:flex;flex-direction:column">'
+    + '<div class="modal-head"><h3>' + titles[type] + ' ' + label + '</h3><button class="modal-close" onclick="document.getElementById(\'modal-lb-detail\').style.display=\'none\'">&times;</button></div>'
+    + '<div style="padding:12px 16px;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch">';
+  for (var i = 0; i < rows.length; i++) html += _dkLbRow(rows[i], i, type);
+  html += '</div>'
+    + '<div style="padding:12px 16px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);text-align:center">Total: ' + rows.length + ' ' + (type==='toko'?'toko':'kasir') + '</div>'
+    + '</div></div>';
+  // Remove old modal if exists
+  var old = document.getElementById('modal-lb-detail');
+  if (old) old.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
 }
 
 function dkRenderRekap(d, label) {
@@ -10768,6 +11027,10 @@ function filterCabangTable(val) {
   renderCabangGrouped(filtered);
 }
 
+let _cbMap = null;
+let _cbMarker = null;
+let _cbSearchTimer = null;
+
 function openTambahCabang() {
   document.getElementById('modal-cabang-title').textContent = 'Tambah Toko';
   document.getElementById('cb-kode').value        = '';
@@ -10784,8 +11047,12 @@ function openTambahCabang() {
   document.getElementById('cb-lng').value         = '';
   document.getElementById('cb-maps-link').innerHTML = '';
   document.getElementById('cb-koordinat-status').textContent = '';
+  document.getElementById('cb-map-search').value  = '';
+  document.getElementById('cb-map-results').style.display = 'none';
   document.getElementById('cb-kode').dataset.editId = '';
   openModal('modal-cabang');
+  // Default: center Jawa Tengah
+  setTimeout(() => cbInitMap(-7.25, 110.42, 10), 200);
 }
 
 async function openEditCabang(id) {
@@ -10805,14 +11072,128 @@ async function openEditCabang(id) {
   document.getElementById('cb-lat').value          = c.lat != null ? c.lat : '';
   document.getElementById('cb-lng').value          = c.lng != null ? c.lng : '';
   document.getElementById('cb-koordinat-status').textContent = '';
-  if (c.lat && c.lng) {
-    document.getElementById('cb-maps-link').innerHTML =
-      `<a href="https://maps.google.com/?q=${c.lat},${c.lng}" target="_blank" style="color:#0284C7">🗺 Lihat di Maps</a>`;
-  } else {
-    document.getElementById('cb-maps-link').innerHTML = '<span style="color:#D97706">⚠ Koordinat belum diset</span>';
-  }
+  document.getElementById('cb-map-search').value   = '';
+  document.getElementById('cb-map-results').style.display = 'none';
+  cbUpdateMapsLink();
   document.getElementById('cb-kode').dataset.editId = c.id;
   openModal('modal-cabang');
+  const hasCoord = c.lat && c.lng;
+  setTimeout(() => cbInitMap(hasCoord ? parseFloat(c.lat) : -7.25, hasCoord ? parseFloat(c.lng) : 110.42, hasCoord ? 17 : 10), 200);
+}
+
+// ── PETA LEAFLET ──
+function cbInitMap(lat, lng, zoom) {
+  const container = document.getElementById('cb-map');
+  // Destroy old map
+  if (_cbMap) { _cbMap.remove(); _cbMap = null; _cbMarker = null; }
+  _cbMap = L.map(container, {zoomControl: true}).setView([lat, lng], zoom);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap',
+    maxZoom: 19
+  }).addTo(_cbMap);
+
+  // Marker jika sudah ada koordinat
+  const hasCoord = document.getElementById('cb-lat').value && document.getElementById('cb-lng').value;
+  if (hasCoord) {
+    _cbMarker = L.marker([lat, lng], {draggable: true}).addTo(_cbMap);
+    _cbMarker.on('dragend', cbOnMarkerDrag);
+  }
+
+  // Klik di peta → set/pindah marker
+  _cbMap.on('click', (e) => {
+    const {lat, lng} = e.latlng;
+    cbSetMarker(lat, lng);
+  });
+
+  // Fix map size setelah modal fully rendered
+  setTimeout(() => { _cbMap.invalidateSize(); }, 400);
+}
+
+function cbSetMarker(lat, lng) {
+  lat = parseFloat(lat.toFixed(7));
+  lng = parseFloat(lng.toFixed(7));
+  if (_cbMarker) {
+    _cbMarker.setLatLng([lat, lng]);
+  } else {
+    _cbMarker = L.marker([lat, lng], {draggable: true}).addTo(_cbMap);
+    _cbMarker.on('dragend', cbOnMarkerDrag);
+  }
+  _cbMap.setView([lat, lng], Math.max(_cbMap.getZoom(), 16));
+  document.getElementById('cb-lat').value = lat;
+  document.getElementById('cb-lng').value = lng;
+  cbUpdateMapsLink();
+  document.getElementById('cb-koordinat-status').textContent = '';
+}
+
+function cbOnMarkerDrag() {
+  const pos = _cbMarker.getLatLng();
+  document.getElementById('cb-lat').value = pos.lat.toFixed(7);
+  document.getElementById('cb-lng').value = pos.lng.toFixed(7);
+  cbUpdateMapsLink();
+}
+
+function cbUpdateMapsLink() {
+  const lat = document.getElementById('cb-lat').value;
+  const lng = document.getElementById('cb-lng').value;
+  if (lat && lng) {
+    document.getElementById('cb-maps-link').innerHTML =
+      `<a href="https://maps.google.com/?q=${lat},${lng}" target="_blank" style="color:#0284C7;font-size:12px">🗺 Google Maps</a>`;
+  } else {
+    document.getElementById('cb-maps-link').innerHTML = '';
+  }
+}
+
+function cbResetKoordinat() {
+  document.getElementById('cb-lat').value = '';
+  document.getElementById('cb-lng').value = '';
+  document.getElementById('cb-maps-link').innerHTML = '';
+  document.getElementById('cb-koordinat-status').textContent = 'Koordinat dihapus.';
+  if (_cbMarker && _cbMap) { _cbMap.removeLayer(_cbMarker); _cbMarker = null; }
+}
+
+// ── SEARCH NOMINATIM (OpenStreetMap) ──
+document.addEventListener('DOMContentLoaded', () => {
+  const searchInp = document.getElementById('cb-map-search');
+  if (!searchInp) return;
+  searchInp.addEventListener('input', () => {
+    if (_cbSearchTimer) clearTimeout(_cbSearchTimer);
+    _cbSearchTimer = setTimeout(() => cbMapSearch(searchInp.value.trim()), 500);
+  });
+  searchInp.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); cbMapSearch(searchInp.value.trim()); }
+    if (e.key === 'Escape') document.getElementById('cb-map-results').style.display = 'none';
+  });
+});
+
+async function cbMapSearch(q) {
+  const resultsDiv = document.getElementById('cb-map-results');
+  if (!q || q.length < 3) { resultsDiv.style.display = 'none'; return; }
+  resultsDiv.style.display = '';
+  resultsDiv.innerHTML = '<div style="padding:10px;color:var(--muted);font-size:13px">Mencari...</div>';
+  try {
+    const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=8&countrycodes=id&q=' + encodeURIComponent(q);
+    const resp = await fetch(url, {headers: {'Accept-Language': 'id'}});
+    const data = await resp.json();
+    if (!data.length) {
+      resultsDiv.innerHTML = '<div style="padding:10px;color:var(--muted);font-size:13px">Tidak ditemukan. Coba kata kunci lain.</div>';
+      return;
+    }
+    resultsDiv.innerHTML = data.map((r, i) => `
+      <div onclick="cbSelectSearchResult(${r.lat},${r.lon},'${r.display_name.replace(/'/g,"\\'").substring(0,80)}')"
+        style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px;transition:background .15s;${i===0?'background:#f0f4ff;':''}"
+        onmouseover="this.style.background='#f0f4ff'" onmouseout="this.style.background=''">
+        <div style="font-weight:600;margin-bottom:2px">${r.display_name.split(',').slice(0,2).join(', ')}</div>
+        <div style="font-size:11px;color:var(--muted)">${r.display_name}</div>
+      </div>`).join('');
+  } catch(e) {
+    resultsDiv.innerHTML = '<div style="padding:10px;color:var(--red);font-size:13px">Gagal mencari. Cek koneksi internet.</div>';
+  }
+}
+
+function cbSelectSearchResult(lat, lng, name) {
+  document.getElementById('cb-map-results').style.display = 'none';
+  document.getElementById('cb-map-search').value = name;
+  cbSetMarker(lat, lng);
 }
 
 async function saveCabang() {
@@ -10851,13 +11232,10 @@ function cbGunakanLokasiSaya() {
   const statusEl = document.getElementById('cb-koordinat-status');
   statusEl.textContent = '⏳ Mendapatkan lokasi…';
   navigator.geolocation.getCurrentPosition(pos => {
-    const lat = pos.coords.latitude.toFixed(7);
-    const lng = pos.coords.longitude.toFixed(7);
-    document.getElementById('cb-lat').value = lat;
-    document.getElementById('cb-lng').value = lng;
-    document.getElementById('cb-maps-link').innerHTML =
-      `<a href="https://maps.google.com/?q=${lat},${lng}" target="_blank" style="color:#0284C7">🗺 Lihat di Maps</a>`;
-    statusEl.textContent = `✅ Akurasi: ±${Math.round(pos.coords.accuracy)}m`;
+    const lat = parseFloat(pos.coords.latitude.toFixed(7));
+    const lng = parseFloat(pos.coords.longitude.toFixed(7));
+    cbSetMarker(lat, lng);
+    statusEl.textContent = `✅ Lokasi ditemukan · Akurasi: ±${Math.round(pos.coords.accuracy)}m`;
   }, err => {
     statusEl.textContent = '❌ Gagal: ' + err.message;
   }, { enableHighAccuracy: true, timeout: 10000 });
@@ -13615,7 +13993,13 @@ async function loadTarget() {
     </div>
     <div class="stat-card blue">
       <div class="stat-val">${sm.total_invoice}</div>
-      <div class="stat-lbl">Total Invoice</div>
+      <div class="stat-lbl">Invoice</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px">${_fmtRp(sm.total_inv_nominal||0)}</div>
+    </div>
+    <div class="stat-card" style="border-top:3px solid #8B5CF6">
+      <div class="stat-val" style="color:#8B5CF6">${sm.total_pos_trx||0}</div>
+      <div class="stat-lbl">POS Trx</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px">${_fmtRp(sm.total_pos_nominal||0)}</div>
     </div>
     <div class="stat-card" style="border-top:3px solid ${overallColor}">
       <div class="stat-val" style="color:${overallColor}">${overallPct}%</div>
@@ -13690,6 +14074,10 @@ async function loadTarget() {
           <div style="background:var(--surface-2);border-radius:8px;padding:10px 12px">
             <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase">Pencapaian</div>
             <div style="font-size:16px;font-weight:800;color:${pct>=100?'#10B981':'var(--text)'}">${_fmtRp(s.pencapaian_nominal)}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">
+              Invoice: ${_fmtRp(s.invoice_nominal||0)}
+              ${s.pos_nominal ? ' + POS: '+_fmtRp(s.pos_nominal) : ''}
+            </div>
           </div>
           <div style="background:var(--surface-2);border-radius:8px;padding:10px 12px">
             <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase">Target</div>
@@ -13705,11 +14093,12 @@ async function loadTarget() {
           ${s.sisa > 0 ? '<div style="font-size:11px;color:var(--muted);margin-top:4px">Kurang <b style="color:'+color+'">'+_fmtRp(s.sisa)+'</b> lagi menuju target</div>' : '<div style="font-size:11px;color:#10B981;margin-top:4px;font-weight:600">Target tercapai! &#10003;</div>'}
         </div>
 
-        <!-- Invoice & detail -->
+        <!-- Invoice + POS detail -->
         <div style="display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid var(--border)">
-          <div style="display:flex;gap:16px">
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
             <div style="font-size:11px;color:var(--muted)"><b style="color:var(--text)">${s.invoice_count}</b> invoice</div>
             <div style="font-size:11px;color:var(--muted)"><b style="color:#10B981">${s.invoice_lunas}</b> lunas</div>
+            <div style="font-size:11px;color:var(--muted)"><b style="color:#8B5CF6">${s.pos_trx_count||0}</b> POS trx</div>
           </div>
           ${canSet ? '<button class="btn btn-ghost btn-xs" onclick="editTargetSales('+s.sales_id+',\''+esc(s.nama_lengkap||s.username)+'\','+s.target_nominal+','+s.target_invoice+')"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><path d="M17 3a2.828 2.828 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg> Edit</button>' : ''}
         </div>
@@ -20124,8 +20513,9 @@ async function loadBarcodeList() {
     <td style="font-family:monospace;font-size:12px">${p.barcode||'<span style="color:var(--muted)">—</span>'}</td>
     <td style="text-align:center">${p.barcode ? `<svg id="bc-svg-${p.id}"></svg>` : '—'}</td>
     <td style="text-align:center;white-space:nowrap">
-      ${!p.barcode ? `<button class="btn btn-primary btn-xs" onclick="bcGenerate(${p.id})">Generate</button>` : ''}
-      <button class="btn btn-ghost btn-xs" onclick="bcEdit(${p.id},'${(p.barcode||'').replace(/'/g,"\\'")}','${p.nama.replace(/'/g,"\\'")}')">✏️</button>
+      ${!p.barcode ? `<button class="btn btn-primary btn-xs" onclick="bcEdit(${p.id},'','${p.nama.replace(/'/g,"\\'")}')" title="Input barcode (scan/manual)">✏️ Input</button>` : ''}
+      ${!p.barcode ? `<button class="btn btn-ghost btn-xs" onclick="bcGenerate(${p.id})" title="Generate barcode otomatis">Generate</button>` : ''}
+      ${p.barcode ? `<button class="btn btn-ghost btn-xs" onclick="bcEdit(${p.id},'${p.barcode.replace(/'/g,"\\'")}','${p.nama.replace(/'/g,"\\'")}')" title="Edit barcode">✏️ Edit</button>` : ''}
       ${p.barcode ? `<button class="btn btn-ghost btn-xs" onclick="bcPrint(${p.id},'${p.barcode}','${p.nama.replace(/'/g,"\\'")}')">🖨️</button>` : ''}
     </td>
   </tr>`).join('');
@@ -20145,13 +20535,111 @@ async function bcGenerate(id) {
   else toast(res.message||'Gagal.','error');
 }
 
-async function bcEdit(id, current, nama) {
-  const val = prompt(`Barcode untuk "${nama}":`, current);
-  if (val === null) return;
-  if (!val.trim()) { toast('Barcode tidak boleh kosong.','error'); return; }
-  const res = await api('/pos/produk/'+id+'/barcode', 'PUT', {barcode:val.trim()});
-  if (res.success) { toast(res.message,'success'); loadBarcodeList(); }
-  else toast(res.message||'Gagal.','error');
+let BC_EDIT_ID = null;
+let BC_EDIT_CURRENT = '';
+let BC_EDIT_TIMER = null;
+
+// ── SCAN INPUT DI TAB BARCODE ──
+// PRJ-300R dan scanner Bluetooth HID lainnya bekerja sebagai keyboard virtual
+// yang "mengetik" karakter ke input yang focus, lalu kirim Enter.
+// Kunci: input HARUS focus + kursor aktif (tidak pakai inputmode=none)
+document.addEventListener('DOMContentLoaded', () => {
+  // Modal edit: input event + Enter
+  const editInp = document.getElementById('bc-edit-input');
+  if (editInp) {
+    editInp.addEventListener('input', () => {
+      if (BC_EDIT_TIMER) clearTimeout(BC_EDIT_TIMER);
+      BC_EDIT_TIMER = setTimeout(() => bcEditPreview(editInp.value), 300);
+      document.getElementById('bc-edit-error').style.display = 'none';
+    });
+    editInp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); bcEditSave(); }
+      if (e.key === 'Escape') bcEditClose();
+    });
+    editInp.addEventListener('change', () => {
+      bcEditPreview(editInp.value);
+    });
+  }
+
+  // Klik modal → refocus input
+  document.getElementById('modal-barcode-edit')?.addEventListener('click', (e) => {
+    if (e.target.tagName !== 'BUTTON' && e.target.id !== 'bc-edit-input') {
+      editInp?.focus();
+    }
+  });
+});
+
+function bcEdit(id, current, nama) {
+  BC_EDIT_ID = id;
+  BC_EDIT_CURRENT = current;
+  document.getElementById('bc-edit-nama').textContent = nama;
+  const rows = document.querySelectorAll('#tbl-barcode tbody tr');
+  let sku = '';
+  rows.forEach(r => { const c = r.cells; if (c[2] && c[2].textContent.trim() === current) sku = c[0]?.textContent?.trim() || ''; });
+  document.getElementById('bc-edit-sku').textContent = sku ? 'SKU: ' + sku : '';
+  document.getElementById('bc-edit-title').textContent = current ? 'Edit Barcode' : 'Input Barcode';
+  const inp = document.getElementById('bc-edit-input');
+  inp.value = current;
+  document.getElementById('bc-edit-error').style.display = 'none';
+  const scanSt = document.getElementById('bc-edit-scan-status');
+  if (scanSt) scanSt.style.display = 'none';
+  document.getElementById('bc-edit-btn-hapus').style.display = current ? '' : 'none';
+  document.getElementById('modal-barcode-edit').style.display = 'flex';
+  bcEditPreview(current);
+  setTimeout(() => { inp.focus(); inp.select(); }, 50);
+}
+
+function bcEditClose() {
+  document.getElementById('modal-barcode-edit').style.display = 'none';
+  BC_EDIT_ID = null;
+  if (BC_EDIT_TIMER) { clearTimeout(BC_EDIT_TIMER); BC_EDIT_TIMER = null; }
+}
+
+function bcEditPreview(val) {
+  const container = document.getElementById('bc-edit-preview');
+  if (!val || !val.trim()) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0">Preview barcode akan muncul di sini</div>';
+    return;
+  }
+  container.innerHTML = '<svg id="bc-edit-svg"></svg>';
+  try {
+    JsBarcode('#bc-edit-svg', val.trim(), {width:1.5, height:40, fontSize:12, margin:4, displayValue:true, font:'monospace', fontOptions:'bold'});
+  } catch(e) {
+    container.innerHTML = '<div style="color:var(--red);font-size:13px;padding:12px 0">Format barcode tidak valid</div>';
+  }
+}
+
+async function bcEditSave() {
+  if (!BC_EDIT_ID) return;
+  const val = document.getElementById('bc-edit-input').value.trim();
+  if (!val) {
+    document.getElementById('bc-edit-error').textContent = 'Barcode tidak boleh kosong.';
+    document.getElementById('bc-edit-error').style.display = '';
+    return;
+  }
+  const btn = document.getElementById('bc-edit-btn-save');
+  btn.disabled = true; btn.textContent = 'Menyimpan…';
+  const res = await api('/pos/produk/'+BC_EDIT_ID+'/barcode', 'PUT', {barcode: val});
+  btn.disabled = false; btn.textContent = 'Simpan';
+  if (res.success) {
+    toast(res.message,'success');
+    bcEditClose();
+    loadBarcodeList();
+  } else {
+    document.getElementById('bc-edit-error').textContent = res.message || 'Gagal menyimpan.';
+    document.getElementById('bc-edit-error').style.display = '';
+  }
+}
+
+async function bcEditHapus() {
+  if (!BC_EDIT_ID) return;
+  if (!confirm('Hapus barcode dari produk ini?')) return;
+  const res = await api('/pos/produk/'+BC_EDIT_ID+'/barcode', 'PUT', {barcode: ''});
+  if (res.success) {
+    toast('Barcode dihapus.','success');
+    bcEditClose();
+    loadBarcodeList();
+  } else toast(res.message||'Gagal.','error');
 }
 
 // ── BATCH PRINT ──
@@ -23909,6 +24397,7 @@ async function loadTransferBarangItems() {
   TB_REQUESTS  = reqRes.data  || [];
   TB_REQ_CHECKED = {};
   TB_QTY_MAP = {};
+  TB_CART_ORDER = [];
 
   // Render panel request di atas tabel
   const reqPanel = document.getElementById('tb-req-panel');
@@ -23966,60 +24455,119 @@ function tbToggleReq(reqId) {
   tbRenderReqPanel();
 }
 
-function tbOnQtyChange() {
+function tbOnQtyChange(pid) {
+  // Pindahkan item yang baru diubah ke paling atas di keranjang
+  if (pid) {
+    const pidStr = String(pid);
+    TB_CART_ORDER = TB_CART_ORDER.filter(p => p !== pidStr);
+    const inp = document.querySelector(`.tb-qty-inp[data-pid="${pid}"]`);
+    const qty = inp ? parseInt(inp.value) || 0 : 0;
+    if (qty > 0) TB_CART_ORDER.unshift(pidStr);
+  }
   if (TB_REQUESTS.length) tbRenderReqPanel();
   tbUpdateStickyCount();
   tbRenderCart();
 }
 
-let TB_CART_OPEN = false;
+let TB_CART_OPEN = true;
+let TB_CART_ORDER = []; // urutan produk_id, terakhir di-input di index 0 (paling atas)
+let TB_CART_COMPACT = false; // mode compact saat scroll ke bawah
+
 function tbToggleCart() {
   TB_CART_OPEN = !TB_CART_OPEN;
   document.getElementById('tb-cart-body').style.display = TB_CART_OPEN ? '' : 'none';
   document.getElementById('tb-cart-arrow').style.transform = TB_CART_OPEN ? '' : 'rotate(-90deg)';
 }
 
+// Scroll listener: compact mode saat user scroll ke bawah daftar produk
+(function() {
+  let _lastScroll = 0;
+  window.addEventListener('scroll', function() {
+    const panel = document.getElementById('tb-cart-panel');
+    if (!panel || panel.style.display === 'none') return;
+    const pgVisible = document.getElementById('pg-transfer-barang')?.style.display !== 'none';
+    if (!pgVisible) return;
+
+    const scrollY = window.scrollY || window.pageYOffset;
+    const wasCompact = TB_CART_COMPACT;
+    TB_CART_COMPACT = scrollY > 200;
+    if (wasCompact !== TB_CART_COMPACT) tbApplyCartSize();
+    _lastScroll = scrollY;
+  }, {passive: true});
+})();
+
+function tbApplyCartSize() {
+  const body = document.getElementById('tb-cart-body');
+  if (!body) return;
+  const visibleItems = TB_CART_COMPACT ? 3 : 5;
+  // Setiap item ~52px tinggi (compact) atau ~58px (normal)
+  const itemH = TB_CART_COMPACT ? 46 : 54;
+  const totalH = visibleItems * itemH + 40; // +40 for total footer
+  body.style.maxHeight = totalH + 'px';
+
+  // Compact: perkecil padding & font
+  const items = document.querySelectorAll('#tb-cart-list > div');
+  items.forEach(el => {
+    el.style.padding = TB_CART_COMPACT ? '4px 8px' : '7px 10px';
+    el.style.fontSize = TB_CART_COMPACT ? '12px' : '';
+  });
+}
+
 function tbRenderCart() {
   tbSaveQtyMap();
   const panel = document.getElementById('tb-cart-panel');
   const entries = Object.entries(TB_QTY_MAP).filter(([,q]) => q > 0);
-  if (!entries.length) { panel.style.display = 'none'; return; }
+  if (!entries.length) { panel.style.display = 'none'; TB_CART_ORDER = []; return; }
 
   const wasHidden = panel.style.display === 'none';
   panel.style.display = '';
 
-  // Pertama kali muncul → auto-expand supaya user lihat
   if (wasHidden) {
     TB_CART_OPEN = true;
     document.getElementById('tb-cart-body').style.display = '';
     document.getElementById('tb-cart-arrow').style.transform = '';
   }
 
-  const items = entries.map(([pid, qty]) => {
-    const p = TB_STOK_ALL.find(x => x.id == pid);
-    return { pid, qty, nama: p?.nama || '?', sku: p?.sku || '', kategori: p?.kategori || '', stok: p?.qty || 0 };
+  // Update urutan: item baru yang belum ada di TB_CART_ORDER ditambah di depan (paling atas)
+  const currentPids = entries.map(([pid]) => pid);
+  // Hapus yang sudah tidak ada
+  TB_CART_ORDER = TB_CART_ORDER.filter(pid => currentPids.includes(pid));
+  // Tambah yang baru di depan
+  currentPids.forEach(pid => {
+    if (!TB_CART_ORDER.includes(pid)) TB_CART_ORDER.unshift(pid);
   });
 
+  // Bangun items sesuai urutan TB_CART_ORDER (terakhir input di atas)
+  const items = TB_CART_ORDER.map(pid => {
+    const qty = TB_QTY_MAP[pid];
+    if (!qty) return null;
+    const p = TB_STOK_ALL.find(x => x.id == pid);
+    return { pid, qty, nama: p?.nama || '?', sku: p?.sku || '', kategori: p?.kategori || '', stok: p?.qty || 0 };
+  }).filter(Boolean);
+
   document.getElementById('tb-cart-badge').textContent = items.length;
-  document.getElementById('tb-cart-list').innerHTML = items.map(it => `
-    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid #E5E7EB">
+  document.getElementById('tb-cart-list').innerHTML = items.map((it, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid #E5E7EB;${i===0?'background:#DCFCE7;':''}">
       <div style="flex:1;min-width:0">
         <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.nama}</div>
-        <div style="font-size:11px;color:#6B7280">${it.sku} · ${it.kategori}</div>
+        <div style="font-size:11px;color:#6B7280">${it.sku}${it.kategori ? ' · '+it.kategori : ''}</div>
       </div>
       <div style="text-align:right;flex-shrink:0">
-        <span style="font-size:16px;font-weight:800;color:#16A34A">${it.qty}</span>
-        <span style="font-size:11px;color:#6B7280"> / ${it.stok}</span>
+        <span style="font-size:15px;font-weight:800;color:#16A34A">${it.qty}</span>
+        <span style="font-size:11px;color:#6B7280">/${it.stok}</span>
       </div>
-      <button style="background:none;border:none;font-size:16px;cursor:pointer;padding:4px;color:#DC2626;flex-shrink:0" onclick="tbCartRemove(${it.pid})" title="Hapus">&#10005;</button>
+      <button style="background:none;border:none;font-size:14px;cursor:pointer;padding:2px 4px;color:#DC2626;flex-shrink:0;line-height:1" onclick="tbCartRemove(${it.pid})" title="Hapus">&times;</button>
     </div>`).join('');
 
   const totalQty = items.reduce((s, it) => s + it.qty, 0);
   document.getElementById('tb-cart-total').innerHTML = `<span>${items.length} produk</span><span>${totalQty} unit total</span>`;
+
+  tbApplyCartSize();
 }
 
 function tbCartRemove(pid) {
   delete TB_QTY_MAP[pid];
+  TB_CART_ORDER = TB_CART_ORDER.filter(p => p != pid);
   const inp = document.querySelector(`.tb-qty-inp[data-pid="${pid}"]`);
   if (inp) inp.value = '';
   tbRenderCart();
@@ -24058,7 +24606,7 @@ function renderTransferBarang(data) {
       <td data-label="Stok" style="text-align:center;font-weight:700;color:${p.qty===0?'var(--red)':p.qty<=5?'var(--yellow)':'var(--green)'}">${p.qty}</td>
       <td data-label="Qty Transfer" style="text-align:center">
         <input type="number" class="form-input tb-qty-inp" data-pid="${p.id}" data-nama="${(p.nama||'').replace(/"/g,'&quot;')}" data-sku="${p.sku||''}" data-stok="${p.qty}"
-          style="width:80px;text-align:center" placeholder="0" min="0" max="${p.qty}" value="${savedQty}" oninput="tbOnQtyChange()">
+          style="width:80px;text-align:center" placeholder="0" min="0" max="${p.qty}" value="${savedQty}" oninput="tbOnQtyChange(${p.id})">
       </td>
     </tr>`;
   }).join('');
@@ -24128,7 +24676,7 @@ async function prosesTransferBarang() {
   document.getElementById('tb-sticky-bar').style.display = 'none';
   document.getElementById('tb-req-panel').style.display = 'none';
   document.getElementById('tb-cart-panel').style.display = 'none';
-  TB_STOK_ALL = []; TB_STOK_DATA = []; TB_REQUESTS = []; TB_REQ_CHECKED = {}; TB_QTY_MAP = {};
+  TB_STOK_ALL = []; TB_STOK_DATA = []; TB_REQUESTS = []; TB_REQ_CHECKED = {}; TB_QTY_MAP = {}; TB_CART_ORDER = [];
 }
 
 function cetakSuratJalan({ dariNama, keNama, catatan, items, tanggal }) {

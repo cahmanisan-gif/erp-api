@@ -15,6 +15,11 @@ router.get('/stats', auth(), async (req, res) => {
 
 // GET /api/dashboard/owner — rich dashboard for owner/management
 router.get('/owner', auth(['owner','manajer','manajer_area','head_operational','admin_pusat']), async (req, res) => {
+  // Timeout 6 detik — jangan bikin APK freeze
+  const timeout = setTimeout(() => {
+    if (!res.headersSent) res.json({success:true, data:null, timeout:true});
+  }, 6000);
+
   try {
     const today = new Date().toISOString().slice(0,10);
     const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
@@ -55,11 +60,11 @@ router.get('/owner', auth(['owner','manajer','manajer_area','head_operational','
       // 3b. Invoice bulan ini
       db.query(`SELECT COALESCE(SUM(total),0) as omzet, COUNT(*) as cnt FROM invoice
         WHERE status IN ('diterbitkan','lunas') AND tanggal>=? AND tanggal<=?`, [bulanIni, today]).then(r=>r[0]),
-      // 4. Trend 7 hari POS (omzet + trx + hpp)
-      db.query(`SELECT DATE(t.created_at) as tgl, COALESCE(SUM(t.total),0) as omzet, COUNT(*) as trx,
-        COALESCE(SUM(hpp_sub.hpp),0) as hpp
+      // 4. Trend 7 hari POS (omzet + trx + hpp) — optimized: JOIN langsung, bukan subquery
+      db.query(`SELECT DATE(t.created_at) as tgl, COALESCE(SUM(t.total),0) as omzet, COUNT(DISTINCT t.id) as trx,
+        COALESCE(SUM(ti.harga_modal * ti.qty),0) as hpp
         FROM pos_transaksi t
-        LEFT JOIN (SELECT transaksi_id, SUM(harga_modal * qty) as hpp FROM pos_transaksi_item GROUP BY transaksi_id) hpp_sub ON hpp_sub.transaksi_id=t.id
+        LEFT JOIN pos_transaksi_item ti ON ti.transaksi_id=t.id
         WHERE t.status='selesai' AND t.created_at>=?
         GROUP BY DATE(t.created_at) ORDER BY tgl ASC`, [d7ago+' 00:00:00']).then(r=>r[0]),
       // 4b. Trend 7 hari invoice
@@ -144,6 +149,8 @@ router.get('/owner', auth(['owner','manajer','manajer_area','head_operational','
     const [[staffTotalRow]] = await db.query(`
       SELECT COUNT(*) as total FROM users WHERE aktif=1 AND role IN ('kasir','kasir_sales','vaporista','kepala_cabang')`);
 
+    clearTimeout(timeout);
+    if (res.headersSent) return;
     res.json({success:true, data:{
       omzet_hari_ini: parseFloat(omzetToday.omzet),
       trx_hari_ini: parseInt(omzetToday.trx),
@@ -164,8 +171,9 @@ router.get('/owner', auth(['owner','manajer','manajer_area','head_operational','
       staff_total: parseInt(staffTotalRow.total)
     }});
   } catch(e) {
+    clearTimeout(timeout);
     console.error('dashboard owner:', e);
-    res.status(500).json({success:false, message:e.message});
+    if (!res.headersSent) res.status(500).json({success:false, message:e.message});
   }
 });
 
@@ -173,10 +181,21 @@ router.get('/owner', auth(['owner','manajer','manajer_area','head_operational','
 router.get('/leaderboard-retail', auth(), async (req, res) => {
   try {
     const GUDANG_IDS = [3, 4]; // exclude GUDANG-S, GUDANG-R
-    const today = new Date().toISOString().slice(0,10);
+    const mode = req.query.mode || 'hari_ini'; // hari_ini | bulan_ini
+    const now = new Date();
+    const today = now.toISOString().slice(0,10);
     const ph = GUDANG_IDS.map(() => '?').join(',');
 
-    // Leaderboard omzet per kasir hari ini (semua cabang retail)
+    let dateFrom, dateTo;
+    if (mode === 'bulan_ini') {
+      dateFrom = today.slice(0,7) + '-01 00:00:00';
+      dateTo = today + ' 23:59:59';
+    } else {
+      dateFrom = today + ' 00:00:00';
+      dateTo = today + ' 23:59:59';
+    }
+
+    // Leaderboard omzet per kasir
     const [omzetRows] = await db.query(`
       SELECT t.kasir_id, MAX(u.nama_lengkap) as nama_lengkap, MAX(c.nama) as nama_cabang, MAX(c.kode) as kode_cabang,
              COALESCE(SUM(t.total),0) as omzet, COUNT(*) as trx
@@ -186,9 +205,9 @@ router.get('/leaderboard-retail', auth(), async (req, res) => {
       WHERE t.status='selesai' AND t.cabang_id NOT IN (${ph})
         AND t.created_at >= ? AND t.created_at <= ?
       GROUP BY t.kasir_id ORDER BY omzet DESC LIMIT 20`,
-      [...GUDANG_IDS, today+' 00:00:00', today+' 23:59:59']);
+      [...GUDANG_IDS, dateFrom, dateTo]);
 
-    // Leaderboard omzet per toko hari ini
+    // Leaderboard omzet per toko
     const [tokoRows] = await db.query(`
       SELECT t.cabang_id, MAX(c.nama) as nama_cabang, MAX(c.kode) as kode_cabang,
              COALESCE(SUM(t.total),0) as omzet, COUNT(*) as trx
@@ -197,9 +216,9 @@ router.get('/leaderboard-retail', auth(), async (req, res) => {
       WHERE t.status='selesai' AND t.cabang_id NOT IN (${ph})
         AND t.created_at >= ? AND t.created_at <= ?
       GROUP BY t.cabang_id ORDER BY omzet DESC LIMIT 20`,
-      [...GUDANG_IDS, today+' 00:00:00', today+' 23:59:59']);
+      [...GUDANG_IDS, dateFrom, dateTo]);
 
-    // Leaderboard poin per kasir hari ini
+    // Leaderboard poin per kasir
     const [poinRows] = await db.query(`
       SELECT t.kasir_id, MAX(u.nama_lengkap) as nama_lengkap, MAX(c.nama) as nama_cabang,
              COALESCE(SUM(ti.komisi_poin * ti.qty),0) as total_poin
@@ -211,7 +230,7 @@ router.get('/leaderboard-retail', auth(), async (req, res) => {
         AND t.created_at >= ? AND t.created_at <= ?
       GROUP BY t.kasir_id HAVING total_poin > 0
       ORDER BY total_poin DESC LIMIT 20`,
-      [...GUDANG_IDS, today+' 00:00:00', today+' 23:59:59']);
+      [...GUDANG_IDS, dateFrom, dateTo]);
 
     const userId = req.user.id;
     const fmt = rows => rows.map(r => ({
@@ -219,7 +238,7 @@ router.get('/leaderboard-retail', auth(), async (req, res) => {
       total_poin: parseInt(r.total_poin||0), is_me: r.kasir_id === userId || r.cabang_id === req.user.cabang_id
     }));
 
-    res.json({ success: true, data: {
+    res.json({ success: true, mode, data: {
       top_kasir: fmt(omzetRows),
       top_toko: fmt(tokoRows),
       top_poin: fmt(poinRows),
