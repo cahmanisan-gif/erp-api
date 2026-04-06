@@ -565,6 +565,17 @@ router.post('/transaksi', auth(), async (req, res) => {
       [req.user.id, _cab, _tglRekap, _cashAdd, _trfAdd, _qrisAdd, totalKomisi, totalPoin, totalItemQty,
        _cashAdd, _trfAdd, _qrisAdd, totalKomisi, totalPoin, totalItemQty]).catch(e=>console.error('rekap err:',e.message));
 
+    // Auto-insert pemasukan harian untuk cabang retail (bukan gudang)
+    if (![3, 4].includes(_cab)) {
+      const [[_omzHari]] = await conn.query(
+        `SELECT COALESCE(SUM(total),0) as t FROM pos_transaksi WHERE cabang_id=? AND status='selesai' AND created_at>=? AND created_at<=?`,
+        [_cab, _tglRekap+' 00:00:00', _tglRekap+' 23:59:59']);
+      await conn.query(`INSERT INTO pemasukan (cabang_id, tanggal, nominal, keterangan, sumber, user_id)
+        VALUES (?, ?, ?, CONCAT('Omzet POS ',?), 'pos_otomatis', ?)
+        ON DUPLICATE KEY UPDATE nominal=VALUES(nominal)`,
+        [_cab, _tglRekap, parseFloat(_omzHari.t), _tglRekap, req.user.id]).catch(e=>console.error('pemasukan auto err:',e.message));
+    }
+
     await conn.commit();
     audit(req, 'create', 'transaksi', id, `${rp_plain(total)} (${metodeEfektif})`, {total, items_count:items.length, cabang_id:_cab});
 
@@ -726,6 +737,16 @@ router.patch('/transaksi/:id/batal', auth(['owner','admin_pusat','manajer']), as
       total_komisi=GREATEST(0,total_komisi-?), total_poin=GREATEST(0,total_poin-?), total_item=GREATEST(0,total_item-?)
       WHERE user_id=? AND cabang_id=? AND tanggal=?`,
       [_bCash, _bTrf, _bQris, bKomisi, bPoin, bItemQty, trx.kasir_id, trx.cabang_id, _bTgl]).catch(()=>{});
+    // Update pemasukan otomatis (recalculate dari total transaksi selesai)
+    const _GUDANG_IDS = [3, 4];
+    if (!_GUDANG_IDS.includes(trx.cabang_id)) {
+      await conn.query(`UPDATE pemasukan SET nominal = (
+        SELECT COALESCE(SUM(total),0) FROM pos_transaksi
+        WHERE cabang_id=? AND status='selesai'
+          AND created_at >= CONCAT(?,' 00:00:00') AND created_at <= CONCAT(?,' 23:59:59')
+      ) WHERE cabang_id=? AND tanggal=? AND sumber='pos_otomatis'`,
+        [trx.cabang_id, _bTgl, _bTgl, trx.cabang_id, _bTgl]).catch(()=>{});
+    }
     await conn.commit();
     audit(req, 'batal', 'transaksi', req.params.id, `Batal ${rp_plain(trx.total)}`, {cabang_id:trx.cabang_id});
     res.json({success:true,message:'Transaksi dibatalkan dan stok dikembalikan.'});
