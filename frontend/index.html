@@ -14737,6 +14737,10 @@ function onOmzetTanggalChange() {
     document.getElementById('omz-inp-pos').value      = '';
     updateOmzetTotal();
   }
+
+  // Auto-fetch omzet POS realtime untuk cabang + tanggal ini
+  _fetchPOSOmzetForForm(cabangId, tanggal);
+
   updateKasHint();
 }
 
@@ -14803,6 +14807,82 @@ function updateFraudCheck() {
 function updateOmzetTotal() { updateFraudCheck(); }
 
 function updatePglTotal() { updateFraudCheck(); }
+
+// ── Auto-fetch omzet POS untuk prefill form ──
+async function _fetchPOSOmzetForForm(cabangId, tanggal) {
+  const box = document.getElementById('omz-pos-realtime');
+  if (!cabangId || !tanggal) { if(box) box.style.display='none'; return; }
+
+  // Fetch dari POS transaksi + history endpoint
+  try {
+    const res = await api(`/pos/laporan/harian?cabang_id=${cabangId}&tgl=${tanggal}`);
+    if (!res.success) { if(box) box.style.display='none'; return; }
+
+    const summary = res.summary || [];
+    let totalOmzet=0, totalCash=0, totalTf=0, totalQris=0, totalTrx=0;
+    summary.forEach(s => {
+      const jml = parseInt(s.jumlah)||0;
+      const metode = s.metode_bayar;
+      totalTrx += jml;
+      if (metode==='cash') totalCash += parseFloat(s.total_omzet)||0;
+      else if (metode==='transfer') totalTf += parseFloat(s.total_omzet)||0;
+      else if (metode==='qris') totalQris += parseFloat(s.total_omzet)||0;
+      else totalCash += parseFloat(s.total_omzet)||0; // split dll masuk cash
+      totalOmzet += parseFloat(s.total_omzet)||0;
+    });
+
+    // Tampilkan info box
+    if (!box) {
+      // Buat info box di atas form (insert sebelum form fields)
+      const container = document.getElementById('omz-inp-pos')?.closest('.modal');
+      const formArea = container?.querySelector('.modal-body');
+      if (formArea) {
+        const infoDiv = document.createElement('div');
+        infoDiv.id = 'omz-pos-realtime';
+        infoDiv.style.cssText = 'background:#EFF6FF;border:1.5px solid #93C5FD;border-radius:10px;padding:14px;margin-bottom:16px';
+        formArea.insertBefore(infoDiv, formArea.firstChild);
+      }
+    }
+    const infoBox = document.getElementById('omz-pos-realtime');
+    if (!infoBox) return;
+
+    if (totalOmzet <= 0) {
+      infoBox.style.display = 'block';
+      infoBox.innerHTML = `<div style="font-size:12px;color:#6B7280">Tidak ada transaksi POS untuk tanggal ini.</div>`;
+      return;
+    }
+
+    infoBox.style.display = 'block';
+    infoBox.innerHTML = `
+      <div style="font-size:12px;font-weight:700;color:#1D4ED8;margin-bottom:8px">Data POS Otomatis — ${totalTrx} transaksi</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:13px">
+        <div><span style="color:#6B7280">Cash</span><br><b style="color:#059669">${rp(totalCash)}</b></div>
+        <div><span style="color:#6B7280">Transfer</span><br><b style="color:#2563EB">${rp(totalTf)}</b></div>
+        <div><span style="color:#6B7280">QRIS</span><br><b style="color:#7C3AED">${rp(totalQris)}</b></div>
+      </div>
+      <div style="margin-top:8px;font-size:13px;font-weight:700">Total Omzet POS: <span style="color:#1D4ED8">${rp(totalOmzet)}</span></div>
+      <div style="margin-top:8px;display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="_prefillFromPOS(${totalCash},${totalTf},${totalOmzet})" style="font-size:12px">Pakai Data POS</button>
+        <span style="font-size:11px;color:#6B7280;align-self:center">Klik untuk auto-fill cash & transfer dari POS</span>
+      </div>`;
+
+    // Auto-fill Omzet POS field
+    const posField = document.getElementById('omz-inp-pos');
+    if (posField && !posField.value) {
+      posField.value = totalOmzet;
+      updateFraudCheck();
+    }
+  } catch(e) { console.warn('POS fetch error:', e); }
+}
+
+function _prefillFromPOS(cash, tf, total) {
+  document.getElementById('omz-inp-cash').value = cash;
+  document.getElementById('omz-inp-transfer').value = tf;
+  document.getElementById('omz-inp-pos').value = total;
+  updateOmzetTotal();
+  updateFraudCheck();
+  toast('Data POS di-apply ke form. Silakan revisi jika perlu.', 'ok');
+}
 
 function updateKasHint() {
   const cashAkun = OMZET_KAS.find(k => k.id == document.getElementById('omz-inp-kas-cash')?.value);
