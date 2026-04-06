@@ -2765,39 +2765,68 @@ tbody td{padding:11px 16px;font-size:13px;color:var(--text);vertical-align:middl
     <!-- PEMASUKAN -->
     <div id="pg-pemasukan" class="content">
       <div class="page-head">
-        <div class="page-head-left"><h2>Omzet Cabang</h2><p>Input & monitoring omzet harian seluruh cabang</p></div>
+        <div class="page-head-left"><h2>Pemasukan & Omzet</h2><p>Pemasukan otomatis dari POS + input omzet manual</p></div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-          <select class="form-select" id="omzet-bulan-sel" style="width:180px" onchange="loadOmzet()"></select>
+          <select class="form-select" id="omzet-bulan-sel" style="width:180px" onchange="loadOmzet();loadPemasukanPOS()"></select>
           <button class="btn btn-primary" onclick="openInputOmzet()">+ Input Omzet</button>
         </div>
       </div>
 
-      <!-- Summary -->
-      <div class="stats-grid" style="margin-bottom:20px">
-        <div class="stat-card"><div class="stat-val" id="omz-total-omzet">Rp 0</div><div class="stat-lbl">Total Omzet Bulan Ini</div></div>
-        <div class="stat-card green"><div class="stat-val" id="omz-total-cash">Rp 0</div><div class="stat-lbl">Total Cash → Brangkas</div></div>
-        <div class="stat-card blue"><div class="stat-val" id="omz-total-tf">Rp 0</div><div class="stat-lbl">Total Transfer → Bank</div></div>
-        <div class="stat-card" style="border-top-color:#D97706"><div class="stat-val" id="omz-warning-count" style="color:#D97706">0</div><div class="stat-lbl">Cabang Ada Tanggal Bolong</div></div>
+      <!-- TABS -->
+      <div style="display:flex;gap:4px;margin-bottom:0">
+        <button class="btn" id="tab-pemasukan-pos" onclick="switchPemasukanTab('pos')" style="border-radius:10px 10px 0 0;font-weight:600;padding:10px 20px;background:var(--brand);color:#fff;border:none;cursor:pointer">Pemasukan POS</button>
+        <button class="btn" id="tab-pemasukan-omzet" onclick="switchPemasukanTab('omzet')" style="border-radius:10px 10px 0 0;font-weight:600;padding:10px 20px;background:#e2e8f0;color:var(--muted);border:none;cursor:pointer">Input Omzet Manual</button>
       </div>
 
-      <!-- Filter -->
-      <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
-        <input class="search-input" id="omz-search" placeholder="Cari nama cabang…" oninput="renderOmzetPanels()" style="width:210px">
-        <select class="form-select" id="omz-area-filter" onchange="renderOmzetPanels()" style="width:160px">
-          <option value="">Semua Area</option>
-        </select>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;">
-          <input type="checkbox" id="omz-only-warning" onchange="renderOmzetPanels()"> Hanya yang bolong
-        </label>
-        <div style="margin-left:auto;display:flex;gap:12px;align-items:center;font-size:11px;color:var(--muted);">
-          <span style="display:flex;align-items:center;gap:5px"><span style="width:11px;height:11px;background:#DCFCE7;border:1px solid #86EFAC;border-radius:3px;display:inline-block"></span>Sudah input</span>
-          <span style="display:flex;align-items:center;gap:5px"><span style="width:11px;height:11px;background:#FEE2E2;border:1px solid #FCA5A5;border-radius:3px;display:inline-block"></span>Belum input</span>
-          <span style="display:flex;align-items:center;gap:5px"><span style="width:11px;height:11px;background:#FEF3C7;border:1px solid #F59E0B;border-radius:3px;display:inline-block"></span>Selisih POS</span>
+      <!-- TAB 1: Pemasukan POS Otomatis -->
+      <div id="tab-content-pos" class="card" style="border-radius:0 10px 10px 10px">
+        <div class="stats-grid" style="margin-bottom:16px">
+          <div class="stat-card green"><div class="stat-val" id="pms-total">Rp 0</div><div class="stat-lbl">Total Pemasukan Bulan Ini</div></div>
+          <div class="stat-card blue"><div class="stat-val" id="pms-cabang">0</div><div class="stat-lbl">Cabang Aktif</div></div>
+          <div class="stat-card"><div class="stat-val" id="pms-records">0</div><div class="stat-lbl">Total Record</div></div>
         </div>
+        <div class="card-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+          <input type="text" class="search-input" placeholder="Cari cabang…" oninput="filterPemasukanPOS(this.value)" style="width:240px;max-width:100%">
+          <span id="pms-info" style="font-size:12px;color:var(--muted)">Data otomatis dari transaksi POS</span>
+        </div>
+        <div class="tbl-wrap"><table>
+          <thead><tr>
+            <th>Cabang</th><th>Tanggal</th><th style="text-align:right">Omzet POS</th>
+            <th>Sumber</th><th style="text-align:center">Aksi</th>
+          </tr></thead>
+          <tbody id="pms-body"><tr class="loading-row"><td colspan="5">Memuat…</td></tr></tbody>
+        </table></div>
       </div>
 
-      <!-- Panels -->
-      <div id="omzet-panels"></div>
+      <!-- TAB 2: Omzet Manual (existing) -->
+      <div id="tab-content-omzet" style="display:none">
+        <!-- Summary -->
+        <div class="stats-grid" style="margin-bottom:20px">
+          <div class="stat-card"><div class="stat-val" id="omz-total-omzet">Rp 0</div><div class="stat-lbl">Total Omzet Bulan Ini</div></div>
+          <div class="stat-card green"><div class="stat-val" id="omz-total-cash">Rp 0</div><div class="stat-lbl">Total Cash → Brangkas</div></div>
+          <div class="stat-card blue"><div class="stat-val" id="omz-total-tf">Rp 0</div><div class="stat-lbl">Total Transfer → Bank</div></div>
+          <div class="stat-card" style="border-top-color:#D97706"><div class="stat-val" id="omz-warning-count" style="color:#D97706">0</div><div class="stat-lbl">Cabang Ada Tanggal Bolong</div></div>
+        </div>
+
+        <!-- Filter -->
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+          <input class="search-input" id="omz-search" placeholder="Cari nama cabang…" oninput="renderOmzetPanels()" style="width:210px">
+          <select class="form-select" id="omz-area-filter" onchange="renderOmzetPanels()" style="width:160px">
+            <option value="">Semua Area</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;">
+            <input type="checkbox" id="omz-only-warning" onchange="renderOmzetPanels()"> Hanya yang bolong
+          </label>
+          <div style="margin-left:auto;display:flex;gap:12px;align-items:center;font-size:11px;color:var(--muted);">
+            <span style="display:flex;align-items:center;gap:5px"><span style="width:11px;height:11px;background:#DCFCE7;border:1px solid #86EFAC;border-radius:3px;display:inline-block"></span>Sudah input</span>
+            <span style="display:flex;align-items:center;gap:5px"><span style="width:11px;height:11px;background:#FEE2E2;border:1px solid #FCA5A5;border-radius:3px;display:inline-block"></span>Belum input</span>
+            <span style="display:flex;align-items:center;gap:5px"><span style="width:11px;height:11px;background:#FEF3C7;border:1px solid #F59E0B;border-radius:3px;display:inline-block"></span>Selisih POS</span>
+          </div>
+        </div>
+
+        <!-- Panels -->
+        <div id="omzet-panels"></div>
+      </div>
     </div>
 
     <!-- MODAL INPUT OMZET -->
@@ -9477,7 +9506,7 @@ function navTo(pgId) {
   if (pgId==='pg-target')      loadTarget();
   if (pgId==='pg-forecast')    loadForecast();
   if (pgId==='pg-kas')         loadKas();
-  if (pgId==='pg-pemasukan')   initOmzetSelects().then(() => loadOmzet());
+  if (pgId==='pg-pemasukan')   initOmzetSelects().then(() => { loadPemasukanPOS(); loadOmzet(); });
   if (pgId==='pg-pengeluaran') loadPengeluaran();
   if (pgId==='pg-karyawan')    loadKaryawan();
   if (pgId==='pg-absensi')     loadAbsensi();
@@ -15086,7 +15115,77 @@ async function saveOmzet() {
 }
 
 // Legacy stubs
-async function loadPemasukan() { if (document.getElementById('pg-pemasukan')?.classList.contains('active')) loadOmzet(); }
+async function loadPemasukan() { if (document.getElementById('pg-pemasukan')?.classList.contains('active')) { loadPemasukanPOS(); loadOmzet(); } }
+
+// ── Tab switcher pemasukan ──
+function switchPemasukanTab(tab) {
+  const btnPos = document.getElementById('tab-pemasukan-pos');
+  const btnOmz = document.getElementById('tab-pemasukan-omzet');
+  const tabPos = document.getElementById('tab-content-pos');
+  const tabOmz = document.getElementById('tab-content-omzet');
+  if (tab === 'pos') {
+    btnPos.style.background = 'var(--brand)'; btnPos.style.color = '#fff';
+    btnOmz.style.background = '#e2e8f0'; btnOmz.style.color = 'var(--muted)';
+    tabPos.style.display = ''; tabOmz.style.display = 'none';
+    loadPemasukanPOS();
+  } else {
+    btnOmz.style.background = 'var(--brand)'; btnOmz.style.color = '#fff';
+    btnPos.style.background = '#e2e8f0'; btnPos.style.color = 'var(--muted)';
+    tabOmz.style.display = ''; tabPos.style.display = 'none';
+    loadOmzet();
+  }
+}
+
+// ── Load Pemasukan POS Otomatis ──
+let _pmsAllRows = [];
+async function loadPemasukanPOS() {
+  const body = document.getElementById('pms-body');
+  if (!body) return;
+  body.innerHTML = '<tr class="loading-row"><td colspan="5">Memuat…</td></tr>';
+  const bulan = document.getElementById('omzet-bulan-sel')?.value || '';
+  const qs = bulan ? '?bulan=' + bulan.slice(0,7) : '';
+  const res = await api('/pemasukan' + qs);
+  if (!res.success) { body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);padding:32px">Gagal memuat data</td></tr>'; return; }
+  _pmsAllRows = (res.data || []).filter(r => r.sumber === 'pos_otomatis');
+  // Summary
+  const total = _pmsAllRows.reduce((s,r) => s + parseFloat(r.nominal||0), 0);
+  const cabangSet = new Set(_pmsAllRows.map(r => r.cabang_id));
+  document.getElementById('pms-total').textContent = rp(total);
+  document.getElementById('pms-cabang').textContent = cabangSet.size;
+  document.getElementById('pms-records').textContent = _pmsAllRows.length;
+  renderPemasukanPOS(_pmsAllRows);
+}
+
+function filterPemasukanPOS(q) {
+  if (!q) return renderPemasukanPOS(_pmsAllRows);
+  renderPemasukanPOS(_pmsAllRows.filter(r => smartMatch((r.nama_cabang||'')+' '+(r.keterangan||''), q)));
+}
+
+function renderPemasukanPOS(rows) {
+  const body = document.getElementById('pms-body');
+  if (!rows.length) { body.innerHTML = '<tr><td colspan="5"><div class="empty"><p>Belum ada pemasukan POS otomatis bulan ini</p></div></td></tr>'; return; }
+  body.innerHTML = rows.map(r => {
+    const tgl = r.tanggal ? new Date(r.tanggal+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}) : '-';
+    const canEdit = ['owner','admin_pusat','finance'].includes(USER.role);
+    return '<tr>'
+      + '<td><b>' + (r.nama_cabang||'—') + '</b></td>'
+      + '<td>' + tgl + '</td>'
+      + '<td style="text-align:right;font-weight:700;color:#059669">' + rp(r.nominal) + '</td>'
+      + '<td><span style="display:inline-block;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:600;background:#DBEAFE;color:#1D4ED8">POS Otomatis</span></td>'
+      + '<td><div class="td-actions">'
+      + (canEdit ? '<button class="btn btn-ghost btn-xs" onclick="editPemasukanPOS('+r.id+','+r.nominal+')">Revisi</button>' : '')
+      + '</div></td>'
+      + '</tr>';
+  }).join('');
+}
+
+async function editPemasukanPOS(id, nominal) {
+  const val = prompt('Revisi nominal pemasukan:', nominal);
+  if (val === null || val === '') return;
+  const res = await api('/pemasukan/'+id, 'PATCH', {nominal: parseFloat(val)});
+  if (res.success) { toast('Pemasukan direvisi (sumber jadi manual).','ok'); loadPemasukanPOS(); }
+  else toast(res.message||'Gagal','err');
+}
 async function savePemasukan() {}
 async function deletePemasukan() {}
 

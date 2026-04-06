@@ -8,6 +8,7 @@ router.get('/', auth(), async (req, res) => {
     let where = 'WHERE 1=1';
     const params = [];
     if (req.query.cabang_id) { where += ' AND p.cabang_id=?'; params.push(parseInt(req.query.cabang_id)); }
+    if (req.query.bulan) { where += " AND DATE_FORMAT(p.tanggal,'%Y-%m')=?"; params.push(req.query.bulan); }
     const [rows] = await db.query(
       `SELECT p.*, c.nama as nama_cabang, COALESCE(p.sumber,'manual') as sumber FROM pemasukan p
        LEFT JOIN cabang c ON p.cabang_id = c.id
