@@ -16217,7 +16217,7 @@ let _kasirAbsensiInterval = null;
 async function initKasirPOS() {
   document.getElementById('kasir-cabang-info').textContent = USER.nama_cabang || '—';
   if (IS_MOBILE) kasirInitMobile();
-  // Owner/admin tidak punya cabang tetap — tampilkan selector
+  // Owner/admin tidak punya cabang tetap — tampilkan selector + auto-select Gudang Sales
   if (!USER.cabang_id && ['owner','admin_pusat','head_operational','manajer'].includes(USER.role)) {
     var sel = document.getElementById('kasir-cabang-select');
     var _wrap = sel.closest('.ss-wrap');
@@ -16226,9 +16226,17 @@ async function initKasirPOS() {
       var cr = await api('/cabang');
       var list = (cr.data||[]).filter(function(c){return c.aktif});
       sel.innerHTML = '<option value="">— Pilih Cabang —</option>' + list.map(function(c){return '<option value="'+c.id+'">'+c.nama+'</option>'}).join('');
-    } catch(e) {}
-    document.getElementById('kasir-cabang-info').textContent = 'Pilih cabang →';
-    return;
+      // Auto-select Gudang Sales (id=3) untuk owner
+      var defaultCab = 3; // GUDANG SALES
+      sel.value = defaultCab;
+      USER._kasir_cabang_id = defaultCab;
+      var defNama = list.find(function(c){return c.id===defaultCab});
+      document.getElementById('kasir-cabang-info').textContent = defNama ? defNama.nama : 'GUDANG SALES';
+    } catch(e) {
+      document.getElementById('kasir-cabang-info').textContent = 'Pilih cabang →';
+      return;
+    }
+    // Lanjut load produk (tidak return)
   }
 
   // Pastikan TOKEN tersedia (APK WebView kadang belum ready)
