@@ -56,6 +56,16 @@
       try { bridge.setPaperWidth(mm); } catch(e) {}
     },
 
+    /** Set kepekatan cetak: 1 (tipis) - 8 (tebal). Default 6. */
+    setPrintDensity: function(level) {
+      try { bridge.setPrintDensity(level); } catch(e) {}
+    },
+
+    /** Get kepekatan cetak saat ini */
+    getPrintDensity: function() {
+      try { return bridge.getPrintDensity(); } catch(e) { return 6; }
+    },
+
     /** Aktifkan Bluetooth */
     enableBluetooth: function() {
       try { bridge.enableBluetooth(); } catch(e) {}

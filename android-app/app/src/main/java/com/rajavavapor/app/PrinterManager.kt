@@ -34,6 +34,23 @@ class PrinterManager(private val context: Context) {
         val ESC_CUT        = byteArrayOf(0x1D, 0x56, 0x41, 0x00)   // Paper cut
         val ESC_FEED       = byteArrayOf(0x1B, 0x64, 0x04)         // Feed 4 lines
         val LF             = byteArrayOf(0x0A)                      // Line feed
+
+        // Print density / heating — kirim semua varian supaya kompatibel dgn berbagai printer
+        // GS ( K: Epson-compatible density (1=light ... 8=darkest)
+        fun densityCommand(level: Int): ByteArray {
+            val n = level.coerceIn(1, 8).toByte()
+            return byteArrayOf(0x1D, 0x28, 0x4B, 0x02, 0x00, 0x31, n)
+        }
+        // DC2 # n: Chinese printer density (0-15, higher=darker)
+        fun densityCommandAlt(level: Int): ByteArray {
+            val n = level.coerceIn(0, 15).toByte()
+            return byteArrayOf(0x12, 0x23, n)
+        }
+        // ESC 7 n1 n2 n3: heating dots, heating time, heating interval
+        // n1=max heating dots (0-255), n2=heating time (3-15, higher=darker), n3=interval
+        fun heatingCommand(dots: Int = 64, time: Int = 255, interval: Int = 2): ByteArray {
+            return byteArrayOf(0x1B, 0x37, dots.toByte(), time.toByte(), interval.toByte())
+        }
     }
 
     private var btAdapter: BluetoothAdapter? = null
@@ -44,6 +61,8 @@ class PrinterManager(private val context: Context) {
     // Lebar karakter: 32 untuk 58mm, 48 untuk 80mm
     var charWidth: Int = 32
     var connectedDeviceName: String = ""
+    // Print density: 1 (tipis) - 8 (tebal). Default 6 supaya jelas terbaca.
+    var printDensity: Int = 6
 
     init {
         val btManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
@@ -92,8 +111,11 @@ class PrinterManager(private val context: Context) {
             // Save last connected device
             saveLastDevice(address)
 
-            // Initialize printer
+            // Initialize printer + set density
             write(ESC_INIT)
+            write(densityCommand(printDensity))
+            write(densityCommandAlt(printDensity * 2))
+            write(heatingCommand(64, 255, 2))
             true
         } catch (e: IOException) {
             // Fallback: coba reflection method untuk beberapa printer China
@@ -107,6 +129,9 @@ class PrinterManager(private val context: Context) {
                 connectedDeviceName = device.name ?: address
                 saveLastDevice(address)
                 write(ESC_INIT)
+                write(densityCommand(printDensity))
+                write(densityCommandAlt(printDensity * 2))
+                write(heatingCommand(64, 255, 2))
                 true
             } catch (_: Exception) {
                 disconnect()
@@ -202,6 +227,11 @@ class PrinterManager(private val context: Context) {
      */
     fun printReceipt(data: ReceiptData) {
         write(ESC_INIT)
+
+        // Set print density — kirim semua varian supaya kompatibel dgn berbagai merk printer
+        write(densityCommand(printDensity))       // Epson-compatible
+        write(densityCommandAlt(printDensity * 2)) // Chinese printers (scale 0-15)
+        write(heatingCommand(64, 255, 2))          // Max heating time — paling efektif untuk printer murah
 
         // Header - nama toko
         write(ESC_ALIGN_CENTER)

@@ -268,6 +268,22 @@ class MainActivity : AppCompatActivity() {
             printerManager.charWidth = if (mm >= 80) 48 else 32
         }
 
+        @JavascriptInterface
+        fun setPrintDensity(level: Int) {
+            printerManager.printDensity = level.coerceIn(1, 8)
+            // Langsung kirim ke printer jika connected
+            if (printerManager.isConnected) {
+                try {
+                    printerManager.write(PrinterManager.densityCommand(printerManager.printDensity))
+                    printerManager.write(PrinterManager.densityCommandAlt(printerManager.printDensity * 2))
+                    printerManager.write(PrinterManager.heatingCommand(64, 255, 2))
+                } catch (_: Exception) {}
+            }
+        }
+
+        @JavascriptInterface
+        fun getPrintDensity(): Int = printerManager.printDensity
+
         @SuppressLint("MissingPermission")
         @JavascriptInterface
         fun enableBluetooth() {
