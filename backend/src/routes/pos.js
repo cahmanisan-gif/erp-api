@@ -521,10 +521,23 @@ router.post('/transaksi', auth(), async (req, res) => {
     let totalKomisi = 0, totalPoin = 0, totalItemQty = 0;
     const _cab = cabang_id||req.user.cabang_id;
     for (const item of items) {
+      // Auto-lookup nama_produk jika tidak dikirim dari client
+      let namaProduk = item.nama_produk || null;
+      if (!namaProduk && item.produk_id) {
+        if (item.is_paket) {
+          const [[pk]] = await conn.query('SELECT nama FROM pos_paket WHERE id=?', [item.produk_id]);
+          if (pk) namaProduk = pk.nama;
+        } else {
+          const [[pp]] = await conn.query('SELECT nama FROM pos_produk WHERE id=?', [item.produk_id]);
+          if (pp) namaProduk = pp.nama;
+        }
+      }
+      if (!namaProduk) namaProduk = 'Produk #' + item.produk_id;
+
       const komisiPoin = item.komisi_poin||0;
       await conn.query(`INSERT INTO pos_transaksi_item (transaksi_id,produk_id,paket_id,nama_produk,qty,harga_jual,harga_modal,diskon_item,subtotal,komisi,komisi_poin)
         VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-        [id, item.is_paket ? null : item.produk_id, item.is_paket ? item.produk_id : null, item.nama_produk, item.qty, item.harga_jual, item.harga_modal||0, item.diskon_item||0, item.harga_jual*item.qty, item.komisi||0, komisiPoin]);
+        [id, item.is_paket ? null : item.produk_id, item.is_paket ? item.produk_id : null, namaProduk, item.qty, item.harga_jual, item.harga_modal||0, item.diskon_item||0, item.harga_jual*item.qty, item.komisi||0, komisiPoin]);
       totalKomisi += (item.komisi||0) * item.qty;
       totalPoin   += komisiPoin * item.qty;
       totalItemQty += item.qty;
