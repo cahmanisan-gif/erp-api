@@ -113,9 +113,9 @@ class PrinterManager(private val context: Context) {
 
             // Initialize printer + set density
             write(ESC_INIT)
+            Thread.sleep(50)
             write(densityCommand(printDensity))
             write(densityCommandAlt(printDensity * 2))
-            write(heatingCommand(64, 255, 2))
             true
         } catch (e: IOException) {
             // Fallback: coba reflection method untuk beberapa printer China
@@ -129,9 +129,9 @@ class PrinterManager(private val context: Context) {
                 connectedDeviceName = device.name ?: address
                 saveLastDevice(address)
                 write(ESC_INIT)
+                Thread.sleep(50)
                 write(densityCommand(printDensity))
                 write(densityCommandAlt(printDensity * 2))
-                write(heatingCommand(64, 255, 2))
                 true
             } catch (_: Exception) {
                 disconnect()
@@ -227,11 +227,12 @@ class PrinterManager(private val context: Context) {
      */
     fun printReceipt(data: ReceiptData) {
         write(ESC_INIT)
+        Thread.sleep(50) // Tunggu printer siap setelah init
 
-        // Set print density — kirim semua varian supaya kompatibel dgn berbagai merk printer
-        write(densityCommand(printDensity))       // Epson-compatible
-        write(densityCommandAlt(printDensity * 2)) // Chinese printers (scale 0-15)
-        write(heatingCommand(64, 255, 2))          // Max heating time — paling efektif untuk printer murah
+        // Set print density — hanya kirim standard commands, hindari heating agresif
+        write(densityCommand(printDensity))
+        write(densityCommandAlt(printDensity * 2))
+        Thread.sleep(30) // Tunggu printer apply density
 
         // Header - nama toko
         write(ESC_ALIGN_CENTER)

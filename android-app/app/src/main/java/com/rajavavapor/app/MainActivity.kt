@@ -271,12 +271,10 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun setPrintDensity(level: Int) {
             printerManager.printDensity = level.coerceIn(1, 8)
-            // Langsung kirim ke printer jika connected
             if (printerManager.isConnected) {
                 try {
                     printerManager.write(PrinterManager.densityCommand(printerManager.printDensity))
                     printerManager.write(PrinterManager.densityCommandAlt(printerManager.printDensity * 2))
-                    printerManager.write(PrinterManager.heatingCommand(64, 255, 2))
                 } catch (_: Exception) {}
             }
         }
