@@ -455,9 +455,12 @@ router.post('/transaksi', auth(), async (req, res) => {
   try {
     await conn.beginTransaction();
 
-    // ── Validasi absensi: kasir toko harus clock-in dan belum clock-out ──
+    // ── Validasi absensi: DISABLED sementara — sedang investigasi bug ──
+    // Kasir terblokir padahal sudah absen. Root cause: race condition sync + status downgrade.
+    // TODO: re-enable setelah fix sync logic
+    /*
     const GUDANG_IDS = [3, 4];
-    const DEBUG_USERS = ['kasirtes']; // bypass absensi untuk debugging
+    const DEBUG_USERS = ['kasirtes'];
     const _cabTrx = req.body.cabang_id || req.user.cabang_id;
     if (['kasir','kasir_sales','vaporista','kepala_cabang'].includes(req.user.role)
         && !GUDANG_IDS.includes(_cabTrx) && req.user.personnel_id
@@ -475,6 +478,7 @@ router.post('/transaksi', auth(), async (req, res) => {
         return res.status(403).json({success:false, message:'Shift Anda sudah berakhir (sudah absen pulang). Tidak dapat melakukan transaksi.', kode:'SUDAH_PULANG'});
       }
     }
+    */
 
     const { cabang_id, items, metode_bayar, bayar, diskon, catatan, pembayaran, member_id } = req.body;
     // pembayaran: [{metode:'cash',nominal:50000},{metode:'transfer',nominal:30000}] — untuk split payment

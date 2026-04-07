@@ -28,13 +28,30 @@ const upload = multer({
 
 const GUDANG_SALES_ID = 3;
 
+// Helper: validasi stok cukup sebelum buat/edit invoice
+async function validasiStokInvoice(conn, items, cabangId) {
+  const kurang = [];
+  for (const item of items) {
+    if (!item.produk_id) continue;
+    const [[stok]] = await conn.query(
+      'SELECT COALESCE(qty,0) as qty FROM pos_stok WHERE produk_id=? AND cabang_id=?',
+      [item.produk_id, cabangId]);
+    const tersedia = stok ? stok.qty : 0;
+    if (tersedia < item.qty) {
+      const [[prod]] = await conn.query('SELECT nama FROM pos_produk WHERE id=?', [item.produk_id]);
+      kurang.push(`${prod?.nama || 'Produk #'+item.produk_id}: stok ${tersedia}, diminta ${item.qty}`);
+    }
+  }
+  return kurang;
+}
+
 // Helper: kurangi stok gudang sales + log (produk_id = pos_produk.id langsung)
 async function kurangiStokDraft(conn, items, invoiceNomor, userId, cabangId) {
   for (const item of items) {
     if (!item.produk_id) continue;
     await conn.query(
       `INSERT INTO pos_stok (produk_id, cabang_id, qty) VALUES (?,?,0)
-       ON DUPLICATE KEY UPDATE qty = GREATEST(0, qty - ?)`,
+       ON DUPLICATE KEY UPDATE qty = qty - ?`,
       [item.produk_id, cabangId, item.qty]);
     await conn.query(
       `INSERT INTO pos_stok_log (produk_id, cabang_id, tipe, qty, keterangan, user_id)
@@ -172,8 +189,13 @@ router.post('/', auth(['owner','manajer','admin_pusat','sales','kasir','kasir_sa
       );
     }
 
-    // Kurangi stok gudang
+    // Validasi & kurangi stok gudang
     const cabId = await getGudangCabang(conn, req.user.id);
+    const kurang = await validasiStokInvoice(conn, items, cabId);
+    if (kurang.length) {
+      await conn.rollback();
+      return res.status(400).json({ success:false, message:'Stok tidak cukup:\n' + kurang.join('\n') });
+    }
     await kurangiStokDraft(conn, items, nomor, req.user.id, cabId);
 
     await conn.commit();
@@ -223,7 +245,12 @@ router.patch('/:id', auth(['owner','manajer','admin_pusat','sales','kasir','kasi
       );
     }
 
-    // 4. Kurangi stok baru
+    // 4. Validasi & kurangi stok baru
+    const kurang = await validasiStokInvoice(conn, items, cabId);
+    if (kurang.length) {
+      await conn.rollback();
+      return res.status(400).json({ success:false, message:'Stok tidak cukup:\n' + kurang.join('\n') });
+    }
     await kurangiStokDraft(conn, items, inv.nomor, req.user.id, cabId);
 
     await conn.commit();

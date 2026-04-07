@@ -16263,61 +16263,11 @@ async function initKasirPOS() {
 }
 
 async function kasirCekAbsensi() {
+  // DISABLED: absensi check dimatikan sementara — sedang investigasi bug
+  // yang menyebabkan kasir terblokir padahal sudah absen
   const overlay = document.getElementById('kasir-absensi-block');
-  const GUDANG_IDS = [3, 4];
-
-  // Exempt: gudang, owner, admin, manajer, debug users
-  const DEBUG_USERS = ['kasirtes'];
-  if (GUDANG_IDS.includes(USER.cabang_id) ||
-      ['owner','admin_pusat','head_operational','manajer','manajer_area'].includes(USER.role) ||
-      DEBUG_USERS.includes(USER.username)) {
-    overlay.style.display = 'none';
-    return true;
-  }
-
-  try {
-    // Trigger sync dulu (rate-limited di server)
-    await api('/kerjoo/sync-absensi-hari-ini', 'POST').catch(() => {});
-    const res = await api('/kerjoo/status-saya');
-    const d = res.data || {};
-
-    if (d.exempt || d.status === 'hadir') {
-      overlay.style.display = 'none';
-      return true;
-    }
-
-    // Block: sudah clock-out (pulang)
-    if (d.status === 'pulang') {
-      overlay.style.display = 'flex';
-      document.getElementById('kab-icon').textContent = '🏠';
-      document.getElementById('kab-title').textContent = 'Shift Sudah Berakhir';
-      document.getElementById('kab-msg').textContent = 'Anda sudah absen pulang. Kasir tidak dapat digunakan setelah clock-out.';
-      document.getElementById('kab-info').textContent = 'Clock-out: ' + (d.clock_out || '-');
-      return false;
-    }
-
-    // Block: belum absen / tidak hadir
-    if (d.status === 'tidak_hadir' || !d.status) {
-      overlay.style.display = 'flex';
-      document.getElementById('kab-icon').textContent = '🚫';
-      document.getElementById('kab-title').textContent = 'Belum Absen Masuk';
-      document.getElementById('kab-msg').textContent = 'Anda belum absen masuk hari ini. Silakan absen di Kerjoo terlebih dahulu untuk memulai shift.';
-      document.getElementById('kab-info').textContent = '';
-      return false;
-    }
-
-    // belum_sync → izinkan dengan warning (data Kerjoo mungkin belum tersinkron)
-    overlay.style.display = 'none';
-    if (d.status === 'belum_sync') {
-      toast('Data absensi belum tersinkronisasi. Pastikan sudah absen di Kerjoo.', 'warn');
-    }
-    return true;
-  } catch(e) {
-    // Jika API error (misal Kerjoo down), izinkan akses (fail-open)
-    console.error('kasirCekAbsensi error:', e);
-    overlay.style.display = 'none';
-    return true;
-  }
+  if (overlay) overlay.style.display = 'none';
+  return true;
 }
 
 function kasirCabangId() { return USER.cabang_id || USER._kasir_cabang_id || 0; }
