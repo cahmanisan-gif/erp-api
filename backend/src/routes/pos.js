@@ -320,14 +320,17 @@ router.get('/stok', auth(), async (req, res) => {
   try {
     const { cabang_id } = req.query;
     if (!cabang_id) return res.status(400).json({success:false,message:'cabang_id wajib.'});
-    // Produk biasa
+    // Produk biasa — default: hanya stok>0 untuk kasir, ?semua=1 untuk lihat semua
+    const showSemua = req.query.semua === '1';
+    const stokFilter = showSemua ? '' : 'AND s.qty > 0';
     const [rows] = await db.query(`
-      SELECT p.id, p.sku, p.barcode, p.nama, p.kategori, p.harga_jual, p.satuan, p.komisi, p.komisi_poin, p.foto_url,
-             p.stok_minimum, p.harga_modal,
+      SELECT p.id, p.sku, p.barcode, p.nama, p.kategori, p.harga_jual, p.satuan, p.komisi, p.komisi_poin,
+             p.foto_url, p.stok_minimum, p.harga_modal,
              s.qty, 0 as is_paket
       FROM pos_produk p
       INNER JOIN pos_stok s ON s.produk_id=p.id AND s.cabang_id=?
-      WHERE p.aktif=1 ORDER BY p.kategori, p.nama`, [cabang_id]);
+      WHERE p.aktif=1 ${stokFilter}
+      ORDER BY p.kategori, p.nama`, [cabang_id]);
 
     // Paket — hitung stok dari komponen
     const [pakets] = await db.query(`SELECT * FROM pos_paket WHERE aktif=1 ORDER BY nama`);
