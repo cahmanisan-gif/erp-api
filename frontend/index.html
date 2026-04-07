@@ -8065,7 +8065,7 @@ if (IS_APK) document.documentElement.classList.add('app-mode');
   const d = document.createElement('div');
   d.id = 'rv-debug';
   d.style.cssText = 'position:fixed;top:4px;right:4px;z-index:99999;background:rgba(0,0,0,.85);color:#0f0;font-size:10px;padding:4px 8px;border-radius:6px;font-family:monospace;pointer-events:none';
-  d.textContent = 'v7-ok APK:' + IS_APK + ' W:' + window.innerWidth;
+  d.textContent = 'v8-fix APK:' + IS_APK + ' W:' + window.innerWidth;
   document.documentElement.appendChild(d);
   setTimeout(() => d.remove(), 15000); // auto-remove after 15 seconds
 })();
@@ -16394,15 +16394,16 @@ async function kasirLoadProduk() {
     const res = await api('/pos/stok?cabang_id='+_kcab);
     console.log('[kasir] stok response success:', res.success, 'count:', (res.data||[]).length);
     if (!res.success) {
-      // API error — auto-retry sekali untuk APK (WebView kadang lambat konek awal)
-      if (_kasirLoadRetry < 2) {
+      // API error — auto-retry hingga 5x dengan delay bertahap (APK WebView recovery)
+      if (_kasirLoadRetry < 5) {
         _kasirLoadRetry++;
-        console.log('[kasir] retry #'+_kasirLoadRetry);
-        grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">Menghubungkan ke server… (percobaan '+ (_kasirLoadRetry+1) +')</div>';
-        setTimeout(kasirLoadProduk, 1500);
+        var delay = Math.min(_kasirLoadRetry * 2000, 8000);
+        console.log('[kasir] retry #'+_kasirLoadRetry+' in '+delay+'ms');
+        grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">Menghubungkan ke server… (percobaan '+ (_kasirLoadRetry+1) +')<br><span style="font-size:11px;color:var(--muted)">Otomatis retry dalam '+(delay/1000)+'s</span></div>';
+        setTimeout(kasirLoadProduk, delay);
         return;
       }
-      grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--red)">'+(res.message||'Gagal memuat produk.')+'<br><button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="_kasirLoadRetry=0;kasirLoadProduk()">🔄 Coba Lagi</button></div>';
+      grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--red)">'+(res.message||'Gagal memuat produk.')+'<br><button class="btn btn-primary btn-sm" style="margin-top:12px;padding:10px 24px;font-size:14px" onclick="_kasirLoadRetry=0;kasirLoadProduk()">🔄 Muat Ulang Produk</button><br><button class="btn btn-ghost btn-sm" style="margin-top:8px;font-size:12px" onclick="location.reload()">Refresh Halaman</button></div>';
       return;
     }
     _kasirLoadRetry = 0;
@@ -16415,7 +16416,13 @@ async function kasirLoadProduk() {
     kasirFilterProduk('');
   } catch(e) {
     console.error('[kasir] loadProduk error:', e);
-    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--red)">Gagal memuat produk. Periksa koneksi.<br><button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="_kasirLoadRetry=0;kasirLoadProduk()">🔄 Coba Lagi</button></div>';
+    if (_kasirLoadRetry < 5) {
+      _kasirLoadRetry++;
+      setTimeout(kasirLoadProduk, _kasirLoadRetry * 2000);
+      grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">Koneksi terputus, mencoba ulang… ('+_kasirLoadRetry+'/5)</div>';
+      return;
+    }
+    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--red)">Gagal memuat produk. Periksa koneksi.<br><button class="btn btn-primary btn-sm" style="margin-top:12px;padding:10px 24px;font-size:14px" onclick="_kasirLoadRetry=0;kasirLoadProduk()">🔄 Muat Ulang Produk</button><br><button class="btn btn-ghost btn-sm" style="margin-top:8px;font-size:12px" onclick="location.reload()">Refresh Halaman</button></div>';
   }
 }
 
